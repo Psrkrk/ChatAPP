@@ -29,7 +29,7 @@ export const updateProfileImage = async (req, res) => {
     }
 
     const userId = req.user.id;  // Assuming user ID is available in the token
-    const profileImageUrl = `/uploads/${req.file.filename}`;
+    const profileImageUrl = `src/updateimg/${req.file.filename}`;
 
     // Update user profile image in the database
     const user = await User.findByIdAndUpdate(

@@ -15,7 +15,7 @@ dotenv.config();
 export const Register = async (req, res) => {
   try {
     const { email, password, fullname, userRole = "user" } = req.body;
-    const profileImage = req.file ? `/uploads/${req.file.filename}` : ""; // Store image path
+    const profileImage = req.file ? `/upload/${req.file.filename}` : ""; // Store image path
 
     if (!email || !password || !fullname) {
       return res.status(400).json({ message: "All fields are required." });
