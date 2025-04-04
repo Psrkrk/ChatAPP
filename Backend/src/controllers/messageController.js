@@ -54,3 +54,67 @@ export const getMessage = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+// Delete Message
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params; // message ID to delete
+    const senderId = req.user._id;
+
+    // Find the message by ID
+    const message = await Message.findById(messageId);
+
+    // Ensure the message exists and the user is the sender
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+    if (message.senderId.toString() !== senderId.toString()) {
+      return res.status(403).json({ error: "You can only delete your own messages" });
+    }
+
+    // Remove message from the conversation
+    const conversation = await Conversation.findOne({
+      members: { $all: [senderId, message.receiverId] },
+    });
+
+    if (conversation) {
+      // Remove the message from the conversation's messages array
+      conversation.messages = conversation.messages.filter(
+        (msg) => msg.toString() !== messageId
+      );
+      await conversation.save();
+    }
+
+    // Delete the message from the Message model
+    await message.delete();
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteMessage", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Delete Conversation
+export const deleteConversation = async (req, res) => {
+  try {
+    const { chatUserId } = req.params;
+    const senderId = req.user._id;
+
+    // Find the conversation that involves the current user and the specified chat user
+    const conversation = await Conversation.findOne({
+      members: { $all: [senderId, chatUserId] },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    // Delete the conversation from the database
+    await conversation.delete();
+
+    res.status(200).json({ message: "Conversation deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteConversation", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
