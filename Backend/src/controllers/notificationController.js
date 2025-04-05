@@ -1,5 +1,6 @@
 import Notification from "../models/notificationModel.js";
 import User from "../models/userModel.js"
+import mongoose from "mongoose";
 
 
 
@@ -64,27 +65,33 @@ export const getNotifications = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 export const markNotificationAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
 
-    // Validate notificationId
+    // ✅ Validate notificationId
     if (!mongoose.Types.ObjectId.isValid(notificationId)) {
       return res.status(400).json({ error: "Invalid notification ID" });
     }
 
-    const notification = await Notification.findByIdAndUpdate(
-      notificationId,
+    // ✅ Find and update notification for the current user
+    const notification = await Notification.findOneAndUpdate(
+      { _id: notificationId, user: req.user.id },
       { isRead: true },
       { new: true }
     );
 
+    // ❌ Not found
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
 
-    res.status(200).json({ success: true, message: "Notification marked as read", notification });
+    // ✅ Success
+    res.status(200).json({
+      success: true,
+      message: "Notification marked as read",
+      notification,
+    });
   } catch (error) {
     console.error("Error in markNotificationAsRead:", error);
     res.status(500).json({ error: "Internal server error" });

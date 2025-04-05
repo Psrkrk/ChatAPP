@@ -3,56 +3,54 @@ import http from "http";
 import express from "express";
 
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer(app); // Create HTTP server from Express app
 
-// Configure Socket.IO with enhanced CORS and security settings
+// Initialize Socket.IO server with CORS and reconnection settings
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: process.env.FRONTEND_URL || "http://localhost:3001", // Allow frontend origin
     methods: ["GET", "POST"],
     credentials: true
   },
   connectionStateRecovery: {
-    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes for reconnect
     skipMiddlewares: true
   }
 });
 
-// User socket mapping with additional metadata
-const userSockets = new Map(); // Using Map instead of object for better performance
+// Map to track which user is connected to which socket
+const userSockets = new Map();
 
 /**
- * Get socket ID for a user with validation
- * @param {string} userId - User ID to lookup
- * @returns {string|null} Socket ID if found, null otherwise
+ * Utility: Get socket ID for a user
+ * @param {string} userId - ID of the user
+ * @returns {string|null} socket ID or null if not connected
  */
 export const getReceiverSocketId = (userId) => {
   if (!userId || typeof userId !== 'string') return null;
   return userSockets.get(userId)?.socketId || null;
 };
 
-// Socket.IO connection handler
+// Socket.IO: Handle new client connection
 io.on("connection", (socket) => {
   console.log(`New connection: ${socket.id}`);
 
-  // Extract and validate user ID from handshake
+  // Extract userId from client authentication
   const userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
+
+  // Validate userId
   if (!userId || typeof userId !== 'string') {
     console.warn(`Invalid user ID from socket ${socket.id}`);
-    return socket.disconnect(true); // Force disconnect invalid connections
+    return socket.disconnect(true); // Disconnect invalid socket
   }
 
-  // Check for existing connection
+  // If the user is already connected, disconnect the old socket
   const existingConnection = userSockets.get(userId);
-  if (existingConnection) {
-    console.log(`User ${userId} already connected on ${existingConnection.socketId}`);
-    // Disconnect previous socket if it's different
-    if (existingConnection.socketId !== socket.id) {
-      io.to(existingConnection.socketId).disconnectSockets();
-    }
+  if (existingConnection && existingConnection.socketId !== socket.id) {
+    io.to(existingConnection.socketId).disconnectSockets(); // Kick out previous connection
   }
 
-  // Store new connection with timestamp
+  // Store userId with socket metadata
   userSockets.set(userId, {
     socketId: socket.id,
     connectedAt: new Date(),
@@ -62,34 +60,35 @@ io.on("connection", (socket) => {
   console.log(`User ${userId} connected as ${socket.id}`);
   console.log(`Active users: ${userSockets.size}`);
 
-  // Notify all clients about online users
+  // Notify all clients of updated online users
   io.emit("onlineUsers", Array.from(userSockets.keys()));
 
-  // Handle disconnection
+  // Handle disconnect event
   socket.on("disconnect", (reason) => {
     console.log(`User ${userId} disconnected (${reason})`);
-    
-    // Only remove if this is the current active connection
+
+    // Remove socket only if it matches the stored one
     if (userSockets.get(userId)?.socketId === socket.id) {
       userSockets.delete(userId);
     }
 
+    // Update all clients with online users
     io.emit("onlineUsers", Array.from(userSockets.keys()));
     console.log(`Remaining users: ${userSockets.size}`);
   });
 
-  // Handle custom disconnect event from client
+  // Optional: Custom event to allow client to force disconnect
   socket.on("forceDisconnect", () => {
     socket.disconnect(true);
   });
 
-  // Error handling
+  // Handle socket errors
   socket.on("error", (err) => {
     console.error(`Socket error for user ${userId}:`, err);
   });
 });
 
-// Cleanup inactive connections periodically
+// Cleanup inactive users periodically (every 5 minutes)
 setInterval(() => {
   const now = new Date();
   const timeout = 30 * 60 * 1000; // 30 minutes
@@ -97,7 +96,7 @@ setInterval(() => {
 
   userSockets.forEach((info, userId) => {
     if (now - info.connectedAt > timeout) {
-      io.to(info.socketId).disconnectSockets();
+      io.to(info.socketId).disconnectSockets(); // Disconnect inactive user
       userSockets.delete(userId);
       cleaned++;
     }
@@ -107,9 +106,9 @@ setInterval(() => {
     console.log(`Cleaned up ${cleaned} inactive connections`);
     io.emit("onlineUsers", Array.from(userSockets.keys()));
   }
-}, 5 * 60 * 1000); // Check every 5 minutes
+}, 5 * 60 * 1000);
 
-// Health check endpoint
+// Simple endpoint to check socket health
 app.get('/socket-health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -118,4 +117,5 @@ app.get('/socket-health', (req, res) => {
   });
 });
 
+// Export everything
 export { app, io, server };

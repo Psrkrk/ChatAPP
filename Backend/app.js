@@ -38,7 +38,7 @@ app.use("/api/v1", authRoute); // ✅ Forgot Password routes are now part of `au
 app.use("/api/v1", messageRoute);
 app.use("/api/v1", profileRoute);
 app.use("/api/v1", userRoute)
-app.use("/api/v1/notification", notificationRoute)
+app.use("/api/v1/", notificationRoute)
 
 // Root Route
 app.get("/", (req, res) => {

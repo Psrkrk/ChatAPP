@@ -9,21 +9,16 @@ import verifyToken from "../middleware/verifyTokenMiddleware.js";
 
 const router = express.Router();
 
-
-
-
 // ✅ Create a Notification
 router.post("/", verifyToken, createNotification);
 
-
-// ✅ Get All Notifications
+// ✅ Get All Notifications for a user
 router.get("/notification", verifyToken, getNotifications);
 
-//read 
-
-router.put("/:notificationId/read", verifyToken, markNotificationAsRead);
+// ✅ Mark Notification as Read
+router.put("/notify/:notificationId/read", verifyToken, markNotificationAsRead);
 
 // ✅ Delete Notification
-router.delete("/:notificationId", verifyToken, deleteNotification);
+router.delete("/delete/notification/:notificationId", verifyToken, deleteNotification);
 
 export default router;
