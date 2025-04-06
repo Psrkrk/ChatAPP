@@ -1,16 +1,24 @@
-
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Signup from './pages/User/Signup';
+import Login from './pages/User/Login';
+import Home from './pages/User/Home';
 
 function App() {
- 
-
   return (
-    <>
-    <div className="h-screen flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-      <h1 className="text-4xl font-bold">🚀 Chat App + Tailwind!</h1>
-    </div>
-    </>
-  )
+    <Router>
+      <Routes>
+        {/* Redirect root to /signup */}
+        <Route path="/" element={<Navigate to="/signup" />} />
+
+        {/* Auth pages */}
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected page example */}
+        <Route path="/home" element={<Home />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
