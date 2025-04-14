@@ -1,21 +1,37 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Signup from './pages/User/Signup';
-import Login from './pages/User/Login';
-import Home from './pages/User/Home';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import React from "react";
+import HomePage from "./pages/User/HomePage.jsx";
+import Signup from "./components/Signup.jsx";
+import Login from "./components/Login.jsx";
+import UserList from "./components/UserList";
+import SendOTP from "./components/SendOTP.jsx";
+import VerifyOTP from "./components/VerifyOTP.jsx";
+import CreateNewPassword from "./components/CreateNewPassword.jsx";
+// import ProtectedRoute from "./protectedroute/ProtectedRoute.jsx";
 
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Redirect root to /signup */}
-        <Route path="/" element={<Navigate to="/signup" />} />
+      {/* ✅ Toast container here */}
+      <ToastContainer position="top-right" autoClose={3000} />
 
-        {/* Auth pages */}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
-
-        {/* Protected page example */}
-        <Route path="/home" element={<Home />} />
+        <Route path="/send-otp" element={<SendOTP />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
+        <Route path="/create-new-password" element={<CreateNewPassword />} />
+        <Route
+          path="/chat"
+          element={
+            // <ProtectedRoute>
+              <UserList />
+            // </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

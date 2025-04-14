@@ -185,56 +185,77 @@ Pankaj Suman`,
 };
 
 // 📌 2️⃣ Verify OTP
+ // Simulating an OTP store for this example
+
+
+
 export const verifyOTP = async (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.status(400).json({ error: "Email and OTP are required" });
+  const { otp, email } = req.body;
+
+  // Ensure OTP and email are provided
+  if (!otp || !email) {
+    return res.status(400).json({ error: "OTP and email are required" });
   }
 
   try {
-    const storedOTP = otpStore.get(email);
+    // Fetch the stored OTP from the store using the user's email as the key
+    const storedOTP = otpStore.get(email); // Using email as the unique key for each user
     if (!storedOTP || storedOTP.expiry < Date.now()) {
+      // If the OTP doesn't exist or has expired, return an error
+      otpStore.delete(email); // Clean up expired OTPs
       return res.status(400).json({ error: "OTP expired or invalid" });
     }
 
+    // Check if the entered OTP matches the stored OTP
     if (storedOTP.otp !== otp) {
       return res.status(400).json({ error: "Incorrect OTP" });
     }
 
-    // Generate a JWT token for security (valid for 15 minutes)
-    const token = jwt.sign({ email }, process.env.JWT_TOKEN, { expiresIn: "15m" });
+    // Remove OTP from store after successful verification
+    otpStore.delete(email); // Clean up the OTP after successful verification
 
-    otpStore.delete(email); // Remove OTP after successful verification
-    res.status(200).json({ message: "OTP verified successfully", token });
+    // Return success message
+    res.status(200).json({ message: "OTP verified successfully" });
+
   } catch (error) {
     console.error("Error in verifyOTP:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
+
+// Assuming you're using a session or OTP verification flow to store email earlier
+
 export const resetPassword = async (req, res) => {
   try {
     const { newPassword, confirmPassword } = req.body;
-    const userId = req.user.id; // Extract userId from token payload
+
+    // ✅ Get email from cookie
+    const email = req.cookies.resetEmail;
+
+    if (!email) {
+      return res.status(401).json({ error: "Unauthorized. Email not found in cookie." });
+    }
 
     if (!newPassword || !confirmPassword) {
       return res.status(400).json({ error: "New password and confirm password are required" });
     }
 
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ error: "New password and confirm password should match" });
+      return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    const user = await userModel.findById(userId);
+    const user = await userModel.findOne({ email });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
+
+    // 🧼 Clear cookie after password reset
+    res.clearCookie('resetEmail');
 
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
@@ -242,3 +263,4 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+

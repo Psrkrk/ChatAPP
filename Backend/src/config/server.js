@@ -8,7 +8,7 @@ const server = http.createServer(app); // Create HTTP server from Express app
 // Initialize Socket.IO server with CORS and reconnection settings
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001", // Allow frontend origin
+    origin: process.env.FRONTEND_URL || " http://localhost:3001/", // Allow frontend origin
     methods: ["GET", "POST"],
     credentials: true
   },

@@ -45,8 +45,8 @@ router.post("/login", login);
 router.post("/logout", verifyToken, Logout);
 
 // 🔹 **OTP & Password Reset Routes**
-router.post("/send-otp",verifyToken, sendOTP);  // ✅ Request OTP
-router.post("/verify-otp",verifyToken, verifyOTP); // ✅ Verify OTP before resetting password
-router.post("/reset-password", verifyToken, resetPassword); 
+router.post("/send-otp", sendOTP);  // ✅ Request OTP
+router.post("/verify-otp", verifyOTP); // ✅ Verify OTP before resetting password
+router.post("/reset-password", resetPassword); 
 
 export default router;

@@ -20,12 +20,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // ✅ Needed for form data
 app.use(cookieParser());
 app.use(cors({ 
-  origin: ["http://localhost:3001"], // Adjust for multiple origins
+  origin: ["http://localhost:5173"], // Adjust for multiple origins
   credentials: true 
 }));
 
 // Serve static files (profile images)
 app.use("/uploads", express.static("uploads"));
+
+// Serve static files (updated profile images or others)
+app.use("/updateimg", express.static("src/updateimg"));
 
 // Connect to MongoDB with error handling
 connectDB().catch(err => {
