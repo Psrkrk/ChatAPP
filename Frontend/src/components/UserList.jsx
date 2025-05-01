@@ -1,19 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAllUsers, updateProfile, updateProfileImage } from "../redux/userSlice";
 import { toast } from "react-toastify";
+import { MoreHorizontal, Search, UserPlus, Upload, User, Shield, Mail, Frown } from "lucide-react";
+import { fetchAllUsers, fetchUserProfile, updateProfile, updateProfileImage } from "../redux/userSlice";
 
 const UserList = () => {
   const dispatch = useDispatch();
-  const { users: allUsers = [], isLoading, error } = useSelector((state) => state.user);
-  
+  const { user: profile, users: allUsers = [], isLoading, error } = useSelector((state) => state.user);
+  const [fullname, setFullname] = useState("");
+  const [email, setEmail] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showActions, setShowActions] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [editForm, setEditForm] = useState({ fullname: "", email: "", profileImage: "" });
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch users on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await dispatch(fetchUserProfile()).unwrap();
+        setFullname(res.fullname);
+        setEmail(res.email);
+      } catch (err) {
+        toast.error("Failed to fetch profile");
+      }
+    };
+    loadProfile();
+  }, [dispatch]);
+
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -25,14 +38,40 @@ const UserList = () => {
     loadUsers();
   }, [dispatch]);
 
-  // Handle error state
   useEffect(() => {
     if (error) {
       toast.error(error);
     }
   }, [error]);
 
-  // Filter users based on search term
+  const handleUpdateInfo = async () => {
+    try {
+      await dispatch(updateProfile({ fullname, email })).unwrap();
+      toast.success("Profile updated successfully!");
+      setIsEditing(false);
+    } catch {
+      toast.error("Failed to update profile");
+    }
+  };
+
+  const handleUpdateImage = async () => {
+    if (!selectedFile) {
+      toast.warning("Please select an image first");
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append("image", selectedFile);
+
+    try {
+      await dispatch(updateProfileImage(formData)).unwrap();
+      toast.success("Profile image updated!");
+      setSelectedFile(null);
+    } catch {
+      toast.error("Failed to upload image");
+    }
+  };
+
   const filteredUsers = allUsers.filter((user) => {
     const term = searchTerm.toLowerCase();
     return (
@@ -41,235 +80,212 @@ const UserList = () => {
     );
   });
 
-  const handleEditClick = (user) => {
-    setEditingUserId(user._id);
-    setEditForm({
-      fullname: user.fullname || "",
-      email: user.email || "",
-      profileImage: user.profileImage || ""
-    });
-    setSelectedImage(null);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate image file
-      if (!file.type.match('image.*')) {
-        toast.error('Please select an image file');
-        return;
-      }
-      
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        toast.error('Image size should be less than 2MB');
-        return;
-      }
-
-      setSelectedImage(file);
-      setEditForm((prev) => ({
-        ...prev,
-        profileImage: URL.createObjectURL(file)
-      }));
-    }
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!editForm.fullname && !editForm.email && !selectedImage) {
-      toast.warn('No changes detected');
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      // Update basic info if changed
-      if (editForm.fullname || editForm.email) {
-        await dispatch(updateProfile({
-          userId: editingUserId,
-          data: {
-            fullname: editForm.fullname,
-            email: editForm.email
-          }
-        })).unwrap();
-        toast.success('Profile updated successfully');
-      }
-
-      // Upload new image if selected
-      if (selectedImage) {
-        const formData = new FormData();
-        formData.append("image", selectedImage);
-        await dispatch(updateProfileImage({
-          userId: editingUserId,
-          formData
-        })).unwrap();
-        toast.success('Profile image updated successfully');
-      }
-
-      // Refresh user list
-      await dispatch(fetchAllUsers()).unwrap();
-      
-      // Reset form
-      setEditingUserId(null);
-      setSelectedImage(null);
-      setEditForm({ fullname: "", email: "", profileImage: "" });
-    } catch (err) {
-      console.error("Update failed:", err);
-      toast.error(err.message || 'Failed to update profile');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditingUserId(null);
-    setSelectedImage(null);
-    setEditForm({ fullname: "", email: "", profileImage: "" });
-  };
-
-  // Function to get proper image URL
-  const getImageUrl = (user) => {
-    if (editingUserId === user._id && editForm.profileImage) {
-      return editForm.profileImage;
-    }
-    if (user.profileImage) {
-      // Check if it's already a full URL or needs the base URL
-      return user.profileImage.startsWith('http') 
-        ? user.profileImage 
-        : `'http://localhost:5000'}${user.profileImage}`;
-    }
-    return "/default-avatar.png";
-  };
-
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h2 className="text-2xl font-semibold text-gray-800">User Management</h2>
-        <div className="relative w-full md:w-64">
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-          />
-          <span className="absolute right-3 top-2.5 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
-        </div>
-      </div>
-
-      {isLoading && !isUpdating ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : filteredUsers.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUsers.map((user) => (
-            <div
-              key={user._id}
-              className="flex items-center space-x-4 p-5 bg-white shadow-md rounded-lg hover:shadow-lg transition duration-200"
+    <div className="p-4 max-w-7xl mx-auto">
+      {/* Profile Section */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-8 relative">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <User className="text-indigo-600" size={24} />
+              My Profile
+            </h2>
+            <p className="text-gray-500">Manage your account information</p>
+          </div>
+          
+          <div className="relative">
+            <button 
+              onClick={() => setShowActions(!showActions)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
+              <MoreHorizontal className="text-gray-500 hover:text-gray-800" />
+            </button>
+
+            {showActions && (
+              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-100 z-10 overflow-hidden">
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2"
+                >
+                  <UserPlus size={16} />
+                  {isEditing ? "Cancel Edit" : "Edit Profile"}
+                </button>
+                <button
+                  onClick={handleUpdateImage}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2"
+                >
+                  <Upload size={16} />
+                  Upload Image
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input
+                value={fullname}
+                onChange={(e) => setFullname(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                type="text"
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                type="email"
+                disabled={!isEditing}
+              />
+            </div>
+
+            {isEditing && (
+              <button
+                onClick={handleUpdateInfo}
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+              >
+                Save Changes
+              </button>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Profile Image</label>
+            <div className="flex items-center gap-4">
               <div className="relative">
                 <img
-                  src={getImageUrl(user)}
-                  alt={user.fullname || "User"}
-                  className="h-16 w-16 rounded-full object-cover border-2 border-indigo-100"
-                  onError={(e) => { e.target.src = "/default-avatar.png"; }}
+                  src={profile?.profileImage ? `http://localhost:5000${profile.profileImage}` : "/default-avatar.png"}
+                  alt={fullname}
+                  className="h-24 w-24 rounded-full object-cover border-4 border-indigo-100"
                 />
-                {editingUserId === user._id ? (
-                  <div className="absolute top-0 right-0 mt-1 mr-1">
-                    <input
-                      type="file"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id={`image-upload-${user._id}`}
-                      accept="image/*"
-                    />
-                    <label htmlFor={`image-upload-${user._id}`} className="text-indigo-600 text-xs cursor-pointer hover:text-indigo-800">
-                      Edit Image
-                    </label>
+                {selectedFile && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs text-center px-2">New Image Selected</span>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => handleEditClick(user)}
-                    className="absolute top-0 right-0 mt-1 mr-1 text-indigo-600 text-xs hover:text-indigo-800"
-                  >
-                    Edit
-                  </button>
-                )}
-                {user.isOnline && (
-                  <div className="absolute bottom-0 right-0 h-4 w-4 bg-green-500 rounded-full border-2 border-white"></div>
                 )}
               </div>
-
-              <div className="flex-1 min-w-0">
-                {editingUserId === user._id ? (
-                  <form onSubmit={handleSave} className="space-y-2">
-                    <input
-                      type="text"
-                      name="fullname"
-                      value={editForm.fullname}
-                      onChange={handleInputChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                      placeholder="Full Name"
-                      required
-                      minLength="2"
-                    />
-                    <input
-                      type="email"
-                      name="email"
-                      value={editForm.email}
-                      onChange={handleInputChange}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                      placeholder="Email"
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <button 
-                        type="submit" 
-                        className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? 'Saving...' : 'Save'}
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={handleCancel} 
-                        className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
-                        disabled={isUpdating}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <p className="font-semibold text-gray-900 text-lg truncate">{user.fullname || "Unknown User"}</p>
-                    <p className="text-gray-600 text-sm truncate">{user.email || "No email provided"}</p>
-                    <p className="text-indigo-600 text-xs mt-1">{user.userRole || "Member"}</p>
-                  </>
+              <div>
+                <input
+                  type="file"
+                  id="profile-image"
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="profile-image"
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Upload size={16} />
+                  Choose Image
+                </label>
+                {selectedFile && (
+                  <p className="text-xs text-gray-500 mt-1">{selectedFile.name}</p>
                 )}
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      ) : (
-        <div className="text-center py-10">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <p className="mt-4 text-gray-500">
-            {searchTerm ? "No matching users found" : "No users available"}
+      </div>
+
+      {/* User Management Section */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <Shield className="text-indigo-600" size={24} />
+              User Management
+            </h2>
+            <p className="text-gray-500">View and manage all system users</p>
+          </div>
+          
+          <div className="relative w-full md:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        ) : filteredUsers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredUsers.map((user) => (
+              <UserCard key={user._id} user={user} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Frown className="h-16 w-16 mx-auto text-gray-400" />
+            <h3 className="mt-4 text-lg font-medium text-gray-700">
+              {searchTerm ? "No users found" : "No users available"}
+            </h3>
+            <p className="mt-1 text-gray-500">
+              {searchTerm ? "Try a different search term" : "Check back later"}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const UserCard = ({ user }) => {
+  const [imgSrc, setImgSrc] = useState(() => {
+    const filename = user?.profileImage?.trim();
+    if (filename && filename !== "/uploads/") {
+      return filename.startsWith("/uploads/")
+        ? `http://localhost:5000${filename}`
+        : `http://localhost:5000/uploads/${filename}`;
+    }
+    return "/default-avatar.png";
+  });
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+      <div className="p-4 flex items-center space-x-4">
+        <div className="relative">
+          <img
+            src={imgSrc}
+            alt={user.fullname || "User"}
+            className="h-14 w-14 rounded-full object-cover border-2 border-indigo-100"
+            onError={() => setImgSrc("/default-avatar.png")}
+          />
+          {user.isOnline && (
+            <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-gray-900 truncate">
+            {user.fullname || "Unknown User"}
+          </p>
+          <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+            
+           
           </p>
         </div>
-      )}
+      </div>
+      <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+        <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+          View Profile
+        </button>
+      </div>
     </div>
   );
 };

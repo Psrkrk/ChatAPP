@@ -23,6 +23,7 @@ export const fetchAllUsers = createAsyncThunk(
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch users");
+
       const data = await response.json();
       if (!data.success) throw new Error("Failed to fetch users: API error");
       return data.users;

@@ -1,5 +1,5 @@
 import userModel from "../models/userModel.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt"
 import generateToken from "../utils/generateToken.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -15,7 +15,8 @@ dotenv.config();
 export const Register = async (req, res) => {
   try {
     const { email, password, fullname, userRole = "user" } = req.body;
-    const profileImage = req.file ? `/upload/${req.file.filename}` : ""; // Store image path
+    const profileImage = req.file ? `/uploads/${req.file.filename}` : "";
+
 
     if (!email || !password || !fullname) {
       return res.status(400).json({ message: "All fields are required." });
@@ -188,79 +189,62 @@ Pankaj Suman`,
  // Simulating an OTP store for this example
 
 
+ export const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body;
 
-export const verifyOTP = async (req, res) => {
-  const { otp, email } = req.body;
-
-  // Ensure OTP and email are provided
-  if (!otp || !email) {
-    return res.status(400).json({ error: "OTP and email are required" });
+  if (!email || !otp) {
+    return res.status(400).json({ error: "Email and OTP are required" });
   }
 
   try {
-    // Fetch the stored OTP from the store using the user's email as the key
-    const storedOTP = otpStore.get(email); // Using email as the unique key for each user
+     // Retrieve the OTP from the in-memory store
+    const storedOTP = otpStore.get(email);
+
     if (!storedOTP || storedOTP.expiry < Date.now()) {
-      // If the OTP doesn't exist or has expired, return an error
-      otpStore.delete(email); // Clean up expired OTPs
+      // OTP is either not found or has expired, remove from store
+      otpStore.delete(email);
       return res.status(400).json({ error: "OTP expired or invalid" });
     }
 
-    // Check if the entered OTP matches the stored OTP
     if (storedOTP.otp !== otp) {
+      // OTP doesn't match
       return res.status(400).json({ error: "Incorrect OTP" });
     }
 
-    // Remove OTP from store after successful verification
-    otpStore.delete(email); // Clean up the OTP after successful verification
+    //  OTP is valid, delete it from store
+    otpStore.delete(email);
 
-    // Return success message
-    res.status(200).json({ message: "OTP verified successfully" });
-
+    return res.status(200).json({ message: "OTP verified successfully" });
   } catch (error) {
     console.error("Error in verifyOTP:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 
-// Assuming you're using a session or OTP verification flow to store email earlier
-
+// Reset the password after OTP verification
 export const resetPassword = async (req, res) => {
   try {
-    const { newPassword, confirmPassword } = req.body;
+    const { email, newPassword } = req.body;
 
-    // ✅ Get email from cookie
-    const email = req.cookies.resetEmail;
-
-    if (!email) {
-      return res.status(401).json({ error: "Unauthorized. Email not found in cookie." });
+    if (!email || !newPassword) {
+      return res.status(400).json({ error: 'Missing email or new password' });
     }
 
-    if (!newPassword || !confirmPassword) {
-      return res.status(400).json({ error: "New password and confirm password are required" });
-    }
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ error: "Passwords do not match" });
-    }
-
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizedEmail });
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: 'No user found with this email' });
     }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
 
-    // 🧼 Clear cookie after password reset
-    res.clearCookie('resetEmail');
-
-    res.status(200).json({ message: "Password reset successfully" });
+    return res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
-    console.error("Error in resetPassword:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error in resetPassword:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
-

@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const SendOTP = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEmailValid, setIsEmailValid] = useState(true);
+  const [otpSent, setOtpSent] = useState(false);
   const navigate = useNavigate();
 
   const validateEmail = (email) => {
@@ -18,33 +20,50 @@ const SendOTP = () => {
     const value = e.target.value;
     setEmail(value);
     setIsEmailValid(validateEmail(value) || value === '');
+    setOtpSent(false); // Reset OTP sent status when email changes
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate email format
+  
     if (!validateEmail(email)) {
       setIsEmailValid(false);
       toast.error('Please enter a valid email address');
       return;
     }
-
+  
     setIsLoading(true);
-    
+  
     try {
-      const response = await axios.post('http://localhost:5000/api/v1/send-otp', { email }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        validateStatus: (status) => status < 500, // Don't throw for 4xx errors
-      });
+      const response = await axios.post('http://localhost:5000/api/v1/send-otp', 
+        { email }, 
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          validateStatus: (status) => status < 500,
+        }
+      );
 
-      if (response.data.success) {
-        toast.success(response.data.message);
-        navigate('/verify-otp');
+      // Handle both string and object responses
+      let responseData = response.data;
+      if (typeof responseData === 'string') {
+        try {
+          responseData = JSON.parse(responseData);
+        } catch (error) {
+          console.error('Failed to parse response:', error);
+          responseData = { success: false, message: responseData };
+        }
+      }
+
+      if (response.status === 200 && responseData.success) {
+        toast.success(responseData.message || 'OTP sent successfully!');
+        setOtpSent(true);
+        // Store email in session or pass it to the next route
+        sessionStorage.setItem('otpEmail', email);
       } else {
-        toast.error(response.data.message || 'Failed to send OTP');
+        toast.error(responseData.message || 'User not found');
+        setOtpSent(false);
       }
     } catch (error) {
       console.error('OTP sending error:', error);
@@ -52,9 +71,14 @@ const SendOTP = () => {
                          error.message || 
                          'Failed to send OTP. Please try again later.';
       toast.error(errorMessage);
+      setOtpSent(false);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNextStep = () => {
+    navigate('/verify-otp', { state: { email } });
   };
 
   return (
@@ -70,8 +94,8 @@ const SendOTP = () => {
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Verify Your Email</h2>
-          <p className="text-gray-600 text-center mb-6">
+          <h2 className="text-2xl font-bold text-center  text-black mb-2">Verify Your Email</h2>
+          <p className="text-black text-center mb-6">
             We'll send a 6-digit verification code to your email
           </p>
 
@@ -109,7 +133,7 @@ const SendOTP = () => {
               type="submit"
               disabled={isLoading || !email || !isEmailValid}
               className={`w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center ${
-                isLoading || !email || !isEmailValid ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md'
+                (isLoading || !email || !isEmailValid) ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-md'
               }`}
             >
               {isLoading ? (
@@ -128,11 +152,26 @@ const SendOTP = () => {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-black">
+              Are you sure change password?{' '}
+              <button
+                onClick={() => navigate('/verify-otp')}
+                className="text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:underline transition-colors"
+                disabled={isLoading}
+              >
+                Verify Otp
+              </button>
+            </p>
+          </div>
+
+
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-black">
               Remember your password?{' '}
               <button
                 onClick={() => navigate('/login')}
-                className="text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:underline"
+                className="text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:underline transition-colors"
                 disabled={isLoading}
               >
                 Sign in

@@ -2,51 +2,56 @@ import express from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url"; // Needed to use __dirname in ES Modules
+import { fileURLToPath } from "url";
 import verifyToken from "../middleware/verifyTokenMiddleware.js";
 import {
   Register,
   login,
-  sendOTP, 
-  verifyOTP, 
+  sendOTP,
+  verifyOTP,
   resetPassword,
   Logout,
 } from "../controllers/authController.js";
 
-
-
 const router = express.Router();
 
-// Get the current directory name (`__dirname` equivalent in ES Modules)
+// ✅ Get __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure 'uploads' directory exists
-const uploadDir = path.join(__dirname, "../uploads");
+// ✅ Define upload directory for profile images
+const uploadDir = path.join(__dirname, "../../public/uploads/");
+
+// ✅ Create directory if it doesn't exist
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure Multer for file uploads
+// ✅ Configure Multer for profile image upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir); // Use absolute path
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+    const uniqueName = Date.now() + path.extname(file.originalname); // e.g., 1713728202000.png
+    cb(null, uniqueName);
   },
 });
 
 const upload = multer({ storage });
 
-// 🔹 **Auth Routes**
+/* -------------------------------------------
+ ✅ Auth Routes
+--------------------------------------------*/
 router.post("/register", upload.single("profileImage"), Register);
 router.post("/login", login);
 router.post("/logout", verifyToken, Logout);
 
-// 🔹 **OTP & Password Reset Routes**
-router.post("/send-otp", sendOTP);  // ✅ Request OTP
-router.post("/verify-otp", verifyOTP); // ✅ Verify OTP before resetting password
-router.post("/reset-password", resetPassword); 
+/* -------------------------------------------
+ ✅ OTP & Password Reset
+--------------------------------------------*/
+router.post("/send-otp", sendOTP);
+router.post("/verify-otp", verifyOTP);
+router.post("/reset-password", resetPassword);
 
 export default router;
