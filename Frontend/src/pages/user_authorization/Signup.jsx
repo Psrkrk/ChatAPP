@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { register, reset } from "../redux/authSlice";
+import { register, reset } from "../../redux/authSlice";
 import { useNavigate, Link} from "react-router-dom";
 
 

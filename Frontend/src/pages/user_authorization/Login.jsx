@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser } from "../redux/authSlice.js";
+import { loginUser } from "../../redux/authSlice";
 import { motion } from "framer-motion";
 import { FiMail, FiLock, FiLoader, FiArrowRight } from "react-icons/fi";
 
@@ -20,13 +20,14 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!email || !password) return;
   
     try {
-      // Dispatch the login action
+      // Dispatch the login action and get the user data
       const user = await dispatch(loginUser({ email, password })).unwrap();
-      
-      // Store both email and token in localStorage
+  
+      // Store email and token in localStorage
       if (user && user.email && user.token) {
         localStorage.setItem("email", user.email);
         localStorage.setItem("authToken", user.token);  // Store token in localStorage
@@ -36,10 +37,15 @@ const Login = () => {
   
       // Redirect to chat page after successful login
       navigate("/chat");
+  
     } catch (err) {
+      // Handle errors during login
       console.error("Login failed:", err);
+      // Optionally, show a message to the user
+      toast.error("Login failed. Please try again.");
     }
   };
+  
   return (
     <motion.div
       className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white px-4"

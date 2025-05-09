@@ -1,111 +1,42 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { toast } from "react-toastify";
-
-const API_BASE_URL = "http://localhost:5000/api/v1";
-
-const getAuthToken = () => localStorage.getItem("authToken");
+import userService from "../services/userService";
 
 const initialState = {
   users: [],
   userProfile: null,
+  profileImageUrl: null,
   isLoading: false,
+  isImageLoading: false,
   error: null,
 };
 
-// Fetch all users
-export const fetchAllUsers = createAsyncThunk(
-  "user/fetchAllUsers",
+// Thunk to get all users
+export const getAllUsers = createAsyncThunk(
+  "user/getAllUsers",
   async (_, { rejectWithValue }) => {
     try {
-      const token = getAuthToken();
-      if (!token) throw new Error("No authentication token found");
-      const response = await fetch(`${API_BASE_URL}/user`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Failed to fetch users");
-
-      const data = await response.json();
-      if (!data.success) throw new Error("Failed to fetch users: API error");
-      return data.users;
+      const response = await userService.getAllUsers();
+      return response.users || [];
     } catch (error) {
-      toast.error(error.message || "Error fetching users");
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Fetch specific user profile
-export const fetchUserProfile = createAsyncThunk(
-  "user/fetchUserProfile",
-  async (_, { rejectWithValue }) => {
-    try {
-      const token = getAuthToken();
-      if (!token) throw new Error("No authentication token found");
-      const response = await fetch(`${API_BASE_URL}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error("Failed to fetch profile");
-      const data = await response.json();
-      if (!data.success) throw new Error("Failed to fetch profile: API error");
-      return data;
-    } catch (error) {
-      toast.error(error.message || "Error fetching profile");
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// Update user profile
+// Thunk to update user profile (name, email, image)
 export const updateProfile = createAsyncThunk(
   "user/updateProfile",
-  async ({ userId, data }, { rejectWithValue }) => {
+  async (updateData, { rejectWithValue }) => {
     try {
-      const token = getAuthToken();
-      if (!token) throw new Error("No authentication token found");
-      const response = await fetch(`${API_BASE_URL}/user/update`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to update profile");
-      const updatedData = await response.json();
-      if (!updatedData.success) throw new Error("Failed to update profile: API error");
-      return { userId, ...updatedData }; // Return userId with updated data
+      const response = await userService.updateProfile(updateData);
+      return response.user; // Matches API response structure
     } catch (error) {
-      toast.error(error.message || "Error updating profile");
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Update profile image
-export const updateProfileImage = createAsyncThunk(
-  "user/updateProfileImage",
-  async ({ userId, formData }, { rejectWithValue }) => {
-    try {
-      const token = getAuthToken();
-      if (!token) throw new Error("No authentication token found");
-      const response = await fetch(`${API_BASE_URL}/update-profile-image`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      if (!response.ok) throw new Error("Failed to update profile image");
-      const updatedData = await response.json();
-      if (!updatedData.success) throw new Error("Failed to update profile image: API error");
-      return { userId, ...updatedData }; // Return userId with updated data
-    } catch (error) {
-      toast.error(error.message || "Error updating profile image");
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
+// User Slice
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -116,59 +47,40 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAllUsers.pending, (state) => {
+      // Get all users
+      .addCase(getAllUsers.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
-      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+      .addCase(getAllUsers.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.users = action.payload || [];
+        state.users = action.payload;
       })
-      .addCase(fetchAllUsers.rejected, (state, action) => {
+      .addCase(getAllUsers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
-      .addCase(fetchUserProfile.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(fetchUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.userProfile = action.payload;
-      })
-      .addCase(fetchUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
+
+      // Update profile
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        const { userId, ...updatedData } = action.payload;
-        state.users = state.users.map((user) =>
-          user._id === userId ? { ...user, ...updatedData } : user
+        state.userProfile = action.payload;
+        state.profileImageUrl = action.payload.profileImage || null;
+
+        // ✅ Reflect changes in the users list
+        const updatedUserIndex = state.users.findIndex(
+          (user) => user._id === action.payload._id
         );
-        if (state.userProfile?._id === userId) {
-          state.userProfile = { ...state.userProfile, ...updatedData };
+        if (updatedUserIndex !== -1) {
+          state.users[updatedUserIndex] = action.payload;
         }
       })
+    
       .addCase(updateProfile.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(updateProfileImage.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(updateProfileImage.fulfilled, (state, action) => {
-        state.isLoading = false;
-        const { userId, profileImage } = action.payload;
-        state.users = state.users.map((user) =>
-          user._id === userId ? { ...user, profileImage } : user
-        );
-        if (state.userProfile?._id === userId) {
-          state.userProfile = { ...state.userProfile, profileImage };
-        }
-      })
-      .addCase(updateProfileImage.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
