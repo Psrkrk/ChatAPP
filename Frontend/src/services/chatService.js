@@ -1,48 +1,34 @@
-// chatService.js
+// src/services/chatService.js
 import axios from "axios";
 
-const BASE_URL = "http://localhost:5000/api/v1"; // Adjust your base URL if needed
+const BASE_URL = "http://localhost:5000/api/v1";
 
-// Send a message function
-export const sendMessage = async (messageData, receiverId) => {
-  try {
-    const token = localStorage.getItem("authToken");
-    const response = await axios.post(
-      `${BASE_URL}/message/send/${receiverId}`,
-      messageData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data; // Make sure the response has the correct data structure (e.g., single message or array)
-  } catch (error) {
-    throw error; // Handle any error and propagate
-  }
+// Get auth token helper
+const getAuthHeader = () => {
+  const token = localStorage.getItem("authToken");
+  return {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  };
 };
 
-// Fetch received messages function
-export const receivedMessages = async (receiverId) => {
-  try {
-    const token = localStorage.getItem("authToken");
-    const response = await axios.get(
-      `${BASE_URL}/message/get/${receiverId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data; // Ensure the server returns an array of messages
-  } catch (error) {
-    throw error;
-  }
+// Send message
+export const sendMessageAPI = async (receiverId, messageData) => {
+  const response = await axios.post(
+    `${BASE_URL}/message/send/${receiverId}`,
+    messageData,
+    getAuthHeader()
+  );
+  return response.data;
 };
 
-export default {
-  sendMessage,
-  receivedMessages,
+// Get received messages
+export const getMessagesAPI = async (receiverId) => {
+  const response = await axios.get(
+    `${BASE_URL}/message/get/${receiverId}`,
+    getAuthHeader()
+  );
+  return response.data;
 };

@@ -1,145 +1,226 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { FiMoreVertical, FiEdit, FiSettings, FiLogOut } from "react-icons/fi";
+import { useNavigate, useParams, Routes, Route } from "react-router-dom";
 import { getAllUsers } from "../../redux/userSlice";
-import { FiUsers, FiUser, FiMail, FiChevronRight, FiAlertCircle } from "react-icons/fi";
-import { Loader2 } from "lucide-react";
 import UserCard from "./UserCard";
+import SendChat from "./SendChat";
+import ReceivedChat from "./ReceivedChat";
+import Modal from "react-modal";
+
+Modal.setAppElement("#root"); // Set the root element for accessibility
 
 const UserList = () => {
   const dispatch = useDispatch();
-  const { users, isLoading, error } = useSelector((state) => state.user);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const navigate = useNavigate();
+  const { receiverId } = useParams();
 
-  // Fetch users initially
+  const { users, user: currentUser } = useSelector((state) => state.user);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [clickedImage, setClickedImage] = useState("");
+
   useEffect(() => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Sync selectedUser if updated in Redux
   useEffect(() => {
-    if (selectedUser) {
-      const updatedUser = users.find((u) => u._id === selectedUser._id);
-      if (updatedUser) {
-        setSelectedUser(updatedUser);
-      }
+    if (receiverId) {
+      const foundUser = users.find((u) => u._id === receiverId);
+      setSelectedUser(foundUser || null);
     }
-  }, [users, selectedUser]);
+  }, [receiverId, users]);
 
-  const handleUserSelect = (user) => {
-    setSelectedUser(user);
+  const handleUserClick = (user) => {
+    navigate(`/chats/${user._id}/send`);
+    setShowEdit(false);
+    setDropdownOpen(false);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="animate-spin text-indigo-600 h-8 w-8" />
-        <span className="ml-2 text-gray-600">Loading users...</span>
-      </div>
-    );
-  }
+  const handleEditClick = () => {
+    setShowEdit(true);
+    setDropdownOpen(false);
+  };
 
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-red-50 rounded-lg p-4 flex items-start border border-red-100">
-          <FiAlertCircle className="text-red-500 mt-0.5 mr-3 flex-shrink-0" size={20} />
-          <div>
-            <h3 className="text-sm font-medium text-red-800">Error loading users</h3>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleSettingsClick = () => {
+    console.log("Settings clicked");
+    setDropdownOpen(false);
+  };
+
+  const handleUpdate = (updatedUser) => {
+    setSelectedUser(updatedUser);
+    setShowEdit(false);
+  };
+
+  const handleCancel = () => {
+    setShowEdit(false);
+  };
+
+  const openImageModal = (imageUrl) => {
+    setClickedImage(imageUrl || "/default.png");
+    setImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
-      {/* User List Section */}
-      <div className="w-full md:w-1/3">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-            <div className="flex items-center">
-              <FiUsers className="text-indigo-600 mr-2" size={20} />
-              <h2 className="text-lg font-semibold text-gray-800">User Directory</h2>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {users.length} {users.length === 1 ? "user" : "users"} in system
-            </p>
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <div className="w-1/3 bg-gray-100 border-r overflow-y-auto flex flex-col">
+        {/* User profile at top */}
+        <div
+          className="p-4 flex items-center gap-3 border-b cursor-pointer hover:bg-gray-200"
+          onClick={() => openImageModal(currentUser?.profileImage || "/default.png")}
+        >
+          <img
+            src={currentUser?.profileImage || "/default.png"}
+            alt={currentUser?.fullname}
+            className="w-10 h-10 rounded-full object-cover border"
+          />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">
+              {currentUser?.fullname || "Unknown User"}
+            </h3>
+            <p className="text-xs text-gray-500">My Profile</p>
           </div>
+        </div>
 
-          {users.length === 0 ? (
-            <div className="p-6 text-center text-gray-500 flex flex-col items-center">
-              <FiUser className="text-gray-300 mb-2" size={24} />
-              <p>No users found</p>
+        <div className="p-4 border-b bg-white font-semibold text-lg">Users</div>
+        <div className="flex-1 overflow-y-auto">
+          {users.map((user) => (
+            <div
+              key={user._id}
+              onClick={() => handleUserClick(user)}
+              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-200 ${
+                selectedUser?._id === user._id ? "bg-gray-200" : ""
+              }`}
+            >
+              <img
+                src={user.profileImage || "/default.png"}
+                alt={user.fullname}
+                className="w-10 h-10 rounded-full object-cover border"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openImageModal(user.profileImage || "/default.png");
+                }}
+              />
+              <span className="text-sm font-medium text-gray-800">
+                {user.fullname}
+              </span>
             </div>
-          ) : (
-            <ul className="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
-              {users.map((user) => (
-                <li
-                  key={user._id}
-                  className={`px-5 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    selectedUser?._id === user._id ? "bg-indigo-50" : ""
-                  }`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        {user.profileImage ? (
-                          <img
-                            src={user.profileImage}
-                            alt={user.fullname}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <FiUser className="text-indigo-600" size={18} />
-                          </div>
-                        )}
-                        {selectedUser?._id === user._id && (
-                          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-indigo-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-800">{user.fullname}</h3>
-                        <p className="text-xs text-gray-500 flex items-center">
-                          <FiMail className="mr-1" size={12} />
-                          {user.email}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-indigo-100 text-indigo-800"
-                        }`}
-                      >
-                        {user.role || "user"}
-                      </span>
-                      <FiChevronRight className="ml-2 text-gray-400" />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* User Details Section */}
-      <div className="w-full md:w-2/3">
+      {/* Right section */}
+      <div className="w-2/3 relative flex flex-col">
         {selectedUser ? (
-          <UserCard user={selectedUser} />
+          <>
+            <div className="p-4 flex justify-between items-center bg-white border-b">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedUser.profileImage || "/default.png"}
+                  alt={selectedUser.fullname}
+                  className="w-10 h-10 rounded-full object-cover border cursor-pointer"
+                  onClick={() => openImageModal(selectedUser.profileImage || "/default.png")}
+                />
+                <div>
+                  <h3 className="text-base font-semibold text-gray-800">
+                    {selectedUser.fullname}
+                  </h3>
+                  <p className="text-xs text-gray-500">Online</p>
+                </div>
+              </div>
+              {selectedUser._id === currentUser._id && (
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                    aria-label="Menu"
+                  >
+                    <FiMoreVertical size={20} />
+                  </button>
+                  {dropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                      <button
+                        onClick={handleEditClick}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <FiEdit className="mr-2" />
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={handleSettingsClick}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center border-t border-gray-100"
+                      >
+                        <FiSettings className="mr-2" />
+                        Settings
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {showEdit ? (
+              <div className="p-4 overflow-auto">
+                <UserCard
+                  user={selectedUser}
+                  onUpdate={handleUpdate}
+                  onCancel={handleCancel}
+                />
+              </div>
+            ) : (
+              <div className="flex-grow overflow-y-auto p-4">
+                <Routes>
+                  <Route
+                    path="/chats/:receiverId/send"
+                    element={<SendChat to={receiverId} />}
+                  />
+                  <Route
+                    path="/chats/:receiverId/received"
+                    element={<ReceivedChat from={receiverId} />}
+                  />
+                </Routes>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center p-6 text-center bg-white rounded-xl shadow-sm border border-gray-100 border-dashed">
-            <FiUser className="text-gray-300 mb-3" size={32} />
-            <h3 className="text-lg font-medium text-gray-500">Select a user</h3>
-            <p className="text-sm text-gray-400 mt-1">Choose from the list to view details</p>
+          <div className="flex items-center justify-center h-full text-gray-500 text-lg">
+            Select a user to start chatting
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      <Modal
+        isOpen={imageModalOpen}
+        onRequestClose={closeImageModal}
+        contentLabel="Profile Image"
+        className="fixed inset-0 flex items-center justify-center z-50"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50"
+      >
+        <div className="bg-white p-4 rounded-lg max-w-md w-full">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Profile Image</h2>
+            <button
+              onClick={closeImageModal}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              &times;
+            </button>
+          </div>
+          <img
+            src={clickedImage}
+            alt="Full profile"
+            className="w-full h-auto rounded-lg"
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

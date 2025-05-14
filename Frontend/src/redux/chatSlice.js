@@ -1,90 +1,74 @@
+// src/redux/chatSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { toast } from "react-toastify";
-import chatService from "../services/chatService"; // Correct import for chatService
+import { sendMessageAPI, getMessagesAPI } from "../services/chatService";
 
-// Initial state for the chat slice
+export const sendMessage = createAsyncThunk(
+  "chat/sendMessage",
+  async ({ receiverId, messageData }, { rejectWithValue }) => {
+    try {
+      return await sendMessageAPI(receiverId, messageData);
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
+export const fetchMessages = createAsyncThunk(
+  "chat/fetchMessages",
+  async (receiverId, { rejectWithValue }) => {
+    try {
+      return await getMessagesAPI(receiverId);
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 const initialState = {
-  users: [],
   messages: [],
   loading: false,
   error: null,
 };
 
-// Send a message
-export const sendMessage = createAsyncThunk(
-  "chat/sendMessage",
-  async ({ messageData, receiverId }, { rejectWithValue }) => {
-    try {
-      const response = await chatService.sendMessage(messageData, receiverId); // Use chatService here
-      return response; // Return the response if successful
-    } catch (error) {
-      return rejectWithValue(error.message || "Failed to send message");
-    }
-  }
-);
-
-// Fetch received messages
-export const receivedMessages = createAsyncThunk(
-  "chat/receivedMessages",
-  async (receiverId, { rejectWithValue }) => {
-    try {
-      const response = await chatService.receivedMessages(receiverId); // Use receivedMessages here
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.message || "Failed to fetch messages");
-    }
-  }
-);
-
-// Create the chat slice
 const chatSlice = createSlice({
   name: "chat",
   initialState,
   reducers: {
-    resetChatState: (state) => {
-      state.users = [];
+    clearMessages: (state) => {
       state.messages = [];
-      state.error = null;
     },
   },
   extraReducers: (builder) => {
-    // Sending a message
     builder
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.loading = false;
-        if (Array.isArray(action.payload)) {
-          state.messages = action.payload; // Replace messages with the returned ones
-        } else {
-          state.messages.push(action.payload); // If sending a single message, append it
-        }
-        toast.success("Message sent successfully");
+        state.messages.push({
+          ...action.payload,
+          sender: "me",
+          status: "sent",
+        });
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        toast.error(action.payload || "Failed to send message");
-      });
+      })
 
-    // Fetching received messages
-    builder
-      .addCase(receivedMessages.pending, (state) => {
+      .addCase(fetchMessages.pending, (state) => {
         state.loading = true;
       })
-      .addCase(receivedMessages.fulfilled, (state, action) => {
+      .addCase(fetchMessages.fulfilled, (state, action) => {
         state.loading = false;
-        state.messages = action.payload; // Replace the messages with the new ones
+        state.messages = action.payload;
       })
-      .addCase(receivedMessages.rejected, (state, action) => {
+      .addCase(fetchMessages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        toast.error(action.payload || "Failed to fetch messages");
       });
   },
 });
 
-export const { resetChatState } = chatSlice.actions;
-
+export const { clearMessages } = chatSlice.actions;
 export default chatSlice.reducer;

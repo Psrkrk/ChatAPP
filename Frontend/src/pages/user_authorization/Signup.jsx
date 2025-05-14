@@ -34,7 +34,7 @@ const Signup = ({ onSuccess, onClose }) => {
     dispatch(register(formData))
       .unwrap()
       .then((user) => {
-        toast.success("🎉 Registration successful!");
+        toast.success("Registration successful!");
         dispatch(reset());
         navigate("/login");
         onSuccess && onSuccess(user);

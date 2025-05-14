@@ -1,165 +1,64 @@
 import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types";
-import { FaUserPlus, FaSignInAlt, FaBars, FaTimes, FaUserCircle, FaSignOutAlt } from "react-icons/fa";
+import {
+  FaUserCircle,
+  FaBars,
+  FaTimes,
+  FaSignOutAlt,
+} from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllUsers } from "../redux/userSlice"; // ✅ Thunk to fetch all users
 import { toast } from "react-toastify";
 
-// Navigation links
-const routes = [
-  { name: "Home", href: "/", isActive: true },
-  { name: "Services", href: "/services", isActive: false },
-  { name: "Features", href: "/features", isActive: false },
-  { name: "Connect", href: "/chat", isActive: false },
-  { name: "How It Works", href: "#how-it-works", isActive: false },
+const navLinks = [
+  { name: "Home", href: "/" },
+  { name: "Services", href: "/services" },
+  { name: "Features", href: "/features" },
+  { name: "How It Works", href: "#how-it-works" },
 ];
 
-// Navigation list component
-const NavMenu = ({ routes, onClick }) => (
-  <>
-    {routes.map((route, i) => (
-      <li key={i} onClick={onClick}>
-        <a
-          href={route.href}
-          className={`px-4 py-2 block transition-opacity duration-200 ${
-            route.isActive
-              ? "text-blue-600 font-semibold"
-              : "text-gray-700 hover:text-blue-500"
-          }`}
-        >
-          {route.name}
-        </a>
-      </li>
-    ))}
-  </>
-);
-
-NavMenu.propTypes = {
-  routes: PropTypes.array.isRequired,
-  onClick: PropTypes.func,
+const getNameFromEmail = (email) => {
+  if (!email) return "User";
+  return email.split("@")[0].replace(/[._]/g, " ");
 };
 
-// Auth buttons (shown when logged out)
-const AuthNavMenu = ({ onClick }) => (
-  <div className="flex items-center gap-4">
-    <li onClick={onClick}>
-      <Link
-        to="/signup"
-        className="flex items-center gap-2 border border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white py-1.5 px-4 rounded-lg transition-colors duration-200"
-      >
-        <FaUserPlus className="text-sm" />
-        <span>Sign Up</span>
-      </Link>
-    </li>
-    <li onClick={onClick}>
-      <Link
-        to="/login"
-        className="flex items-center gap-2 border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 py-1.5 px-4 rounded-lg transition-colors duration-200"
-      >
-        <FaSignInAlt className="text-sm" />
-        <span>Log In</span>
-      </Link>
-    </li>
-  </div>
-);
-
-AuthNavMenu.propTypes = {
-  onClick: PropTypes.func,
-};
-
-// User profile dropdown (shown when logged in)
-const UserProfileDropdown = ({ user, onLogout }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    onLogout();
-    setIsOpen(false);
-    navigate("/");
-    toast.success("Logged out successfully");
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 focus:outline-none"
-      >
-        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
-          {user.avatar ? (
-            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-          ) : (
-            <FaUserCircle className="text-blue-600 text-2xl" />
-          )}
-        </div>
-        <span className="hidden md:inline font-medium text-gray-700">{user.name}</span>
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
-          <Link
-            to="/profile"
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-          >
-            My Profile
-          </Link>
-          <Link
-            to="/settings"
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-          >
-            Settings
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
-          >
-            <FaSignOutAlt />
-            Sign Out
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-UserProfileDropdown.propTypes = {
-  user: PropTypes.object.isRequired,
-  onLogout: PropTypes.func.isRequired,
-};
-
-// Final header component
 const Header = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState({
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "",
-  });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  // Check auth status on component mount
+  const { users } = useSelector((state) => state.user);
+  const token = localStorage.getItem("authToken");
+  const email = localStorage.getItem("email"); // 👈 store this during login/signup
+
+  const loggedInUser = users.find((u) => u.email === email);
+
   useEffect(() => {
-    // Replace with actual auth check
-    const token = localStorage.getItem("token");
-    if (token) {
+    if (token && email) {
       setIsLoggedIn(true);
-      // Fetch user data here in a real app
+      dispatch(getAllUsers());
     }
-  }, []);
+  }, [dispatch, token, email]);
 
   const toggleMenu = () => setMobileMenuOpen(!isMobileMenuOpen);
   const closeMenu = () => setMobileMenuOpen(false);
 
   const handleLogout = () => {
-    // Perform logout actions
-    localStorage.removeItem("token");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("email");
     setIsLoggedIn(false);
+    toast.success("Logged out successfully");
+    navigate("/");
+  };
+
+  const handleConnectClick = () => {
+    isLoggedIn ? navigate("/chats") : navigate("/login");
   };
 
   return (
     <header className="bg-white shadow-sm w-full fixed top-0 z-50">
-      <nav className="w-full max-w-7xl mx-auto px-4 py-3">
+      <nav className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2" onClick={closeMenu}>
@@ -174,20 +73,55 @@ const Header = () => {
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
             <ul className="flex gap-6 items-center">
-              <NavMenu routes={routes} />
+              {navLinks.map((link, index) => (
+                <li key={index}>
+                  <a href={link.href} className="text-gray-700 hover:text-blue-600">
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+              <li onClick={handleConnectClick} className="cursor-pointer text-gray-700 hover:text-blue-600">
+                Connect
+              </li>
             </ul>
-            
-            {isLoggedIn ? (
-              <UserProfileDropdown user={user} onLogout={handleLogout} />
+
+            {/* User Info */}
+            {isLoggedIn && loggedInUser ? (
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 overflow-hidden">
+                  {loggedInUser.avatar ? (
+                    <img
+                      src={loggedInUser.avatar}
+                      alt={loggedInUser.fullname}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <FaUserCircle className="text-blue-600 text-2xl mx-auto mt-2" />
+                  )}
+                </div>
+                <span className="hidden md:inline font-medium text-gray-700">
+                  {loggedInUser.fullname || getNameFromEmail(loggedInUser.email)}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 text-gray-700 hover:text-blue-600"
+                >
+                  <FaSignOutAlt />
+                  Sign Out
+                </button>
+              </div>
             ) : (
-              <AuthNavMenu />
+              <div className="flex items-center gap-4">
+                <Link to="/signup" className="text-blue-600">Sign Up</Link>
+                <Link to="/login" className="text-blue-600">Log In</Link>
+              </div>
             )}
           </div>
 
           {/* Mobile Hamburger */}
           <button
             onClick={toggleMenu}
-            className="block lg:hidden text-2xl text-gray-700 p-1"
+            className="block lg:hidden text-2xl text-gray-700"
             aria-label="Toggle Menu"
           >
             {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
@@ -198,35 +132,43 @@ const Header = () => {
         {isMobileMenuOpen && (
           <div className="lg:hidden mt-4 bg-white p-4 shadow-lg rounded-lg">
             <ul className="flex flex-col gap-3">
-              <NavMenu routes={routes} onClick={closeMenu} />
-              <div className="border-t border-gray-100 pt-3 mt-2">
+              {navLinks.map((link, index) => (
+                <li key={index}>
+                  <a href={link.href} onClick={closeMenu} className="text-gray-700">
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+              <li onClick={handleConnectClick} className="text-gray-700 cursor-pointer">
+                Connect
+              </li>
+              <div className="border-t border-gray-200 pt-3">
                 {isLoggedIn ? (
                   <>
                     <li>
-                      <Link
-                        to="/profile"
-                        onClick={closeMenu}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-blue-600"
-                      >
-                        <FaUserCircle />
+                      <Link to="/profile" onClick={closeMenu} className="text-gray-700">
                         My Profile
                       </Link>
                     </li>
                     <li>
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          closeMenu();
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-blue-600 w-full text-left"
-                      >
-                        <FaSignOutAlt />
-                        Sign Out
+                      <button onClick={handleLogout} className="text-gray-700 w-full text-left">
+                        <FaSignOutAlt /> Sign Out
                       </button>
                     </li>
                   </>
                 ) : (
-                  <AuthNavMenu onClick={closeMenu} />
+                  <>
+                    <li>
+                      <Link to="/signup" onClick={closeMenu} className="text-gray-700">
+                        Sign Up
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/login" onClick={closeMenu} className="text-gray-700">
+                        Log In
+                      </Link>
+                    </li>
+                  </>
                 )}
               </div>
             </ul>

@@ -36,7 +36,7 @@ const Login = () => {
       }
   
       // Redirect to chat page after successful login
-      navigate("/chat");
+      navigate("/chats");
   
     } catch (err) {
       // Handle errors during login
