@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../redux/authSlice";
 import { motion } from "framer-motion";
 import { FiMail, FiLock, FiLoader, FiArrowRight } from "react-icons/fi";
+import { getNotifications } from "../../redux/notificationSlice";
+
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -18,33 +20,35 @@ const Login = () => {
   
   const { isLoading, error } = useSelector((state) => state.auth);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!email || !password) return;
-  
-    try {
-      // Dispatch the login action and get the user data
-      const user = await dispatch(loginUser({ email, password })).unwrap();
-  
-      // Store email and token in localStorage
-      if (user && user.email && user.token) {
-        localStorage.setItem("email", user.email);
-        localStorage.setItem("authToken", user.token);  // Store token in localStorage
-      } else {
-        console.error("User data is incomplete. Cannot store email or token.");
-      }
-  
-      // Redirect to chat page after successful login
-      navigate("/chats");
-  
-    } catch (err) {
-      // Handle errors during login
-      console.error("Login failed:", err);
-      // Optionally, show a message to the user
-      toast.error("Login failed. Please try again.");
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!email || !password) return;
+
+  try {
+    // Dispatch the login action and get the user data
+    const user = await dispatch(loginUser({ email, password })).unwrap();
+
+    // Store email and token in localStorage
+    if (user && user.email && user.token) {
+      localStorage.setItem("email", user.email);
+      localStorage.setItem("authToken", user.token);  // Store token in localStorage
+    } else {
+      console.error("User data is incomplete. Cannot store email or token.");
     }
-  };
+
+    // 👇 NEW LINE: Dispatch notification fetch right after login
+    dispatch( getNotifications());
+
+    // Redirect to chat page after successful login
+    navigate("/chats");
+
+  } catch (err) {
+    console.error("Login failed:", err);
+    toast.error("Login failed. Please try again.");
+  }
+};
+
   
   return (
     <motion.div

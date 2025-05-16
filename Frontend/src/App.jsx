@@ -26,6 +26,8 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} />
 
       <Routes>
+
+         <Route path="/" element={<HomePage />} />
         {/* Public Auth and Forgot Password Routes */}
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
@@ -43,7 +45,7 @@ function App() {
           }
         />
         <Route
-          path="/chats"
+          path="/chats/*"
           element={
             <ProtectedRoute>
               <UserList />

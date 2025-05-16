@@ -5,8 +5,7 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   FiSend,
-  FiCheck,
-  FiCheckCircle
+  FiCheck
 } from 'react-icons/fi';
 import moment from 'moment';
 
@@ -52,7 +51,6 @@ const SendChat = () => {
     };
 
     setIsSending(true);
-
     dispatch({ type: 'chat/addOptimisticMessage', payload: messageData });
 
     try {
@@ -68,7 +66,6 @@ const SendChat = () => {
       });
 
       if (!msgObj) setMessage('');
-      // ❌ Removed success toast
     } catch (err) {
       dispatch({
         type: 'chat/updateMessageStatus',
@@ -131,7 +128,7 @@ const SendChat = () => {
         ) : (
           messages.map((msg) => (
             <div
-              key={msg.messageId || msg.timestamp}
+              key={`${msg.senderId}-${msg.messageId || msg.timestamp}`}
               className={`flex ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
             >
               <div
