@@ -1,12 +1,14 @@
+// src/pages/User/UserList.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getAllUsers } from "../../redux/userSlice";
-import UserCard from "./UserCard";
-import SendChat from "./SendChat";
-import ReceivedChat from "./ReceivedChat";
+import UserCard from "./UserCard.jsx";
+import SendChat from "./SendChat.jsx";
+import ReceivedChat from "./ReceivedChat.jsx";
 import { HiDotsVertical } from "react-icons/hi";
 import Modal from "react-modal";
+import Notification from "../../components/Notifications";
 
 Modal.setAppElement("#root");
 
@@ -17,13 +19,21 @@ const UserList = () => {
   const location = useLocation();
 
   const { users, user: currentUser } = useSelector((state) => state.user);
+
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [notification, setNotification] = useState({
+    show: false,
+    message: "",
+    type: "success",
+  });
 
+  // Fetch all users
   useEffect(() => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
+  // Update selectedUser based on receiverId
   useEffect(() => {
     if (receiverId) {
       const foundUser = users.find((u) => u._id === receiverId);
@@ -35,31 +45,55 @@ const UserList = () => {
     }
   }, [receiverId, users]);
 
-  const handleUserClick = (user) => {
-    setShowEdit(false);
-    navigate(`/chats/${user._id}/send`); // Default to send chat view on user click
+  // Show notification
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => {
+      setNotification({ show: false, message: "", type });
+    }, 3000);
   };
 
+  // Handle user click
+  const handleUserClick = (user) => {
+    setShowEdit(false);
+    navigate(`/chats/${user._id}/send`);
+    showNotification(`Now chatting with ${user.fullname}`, "success");
+  };
+
+  // Toggle edit mode
   const handleEditClick = () => {
     setShowEdit((prev) => !prev);
   };
 
+  // Handle profile update
   const handleUpdate = (updatedUser) => {
     setSelectedUser(updatedUser);
     setShowEdit(false);
+    showNotification("Profile updated successfully!", "success");
   };
 
+  // Cancel editing
   const handleCancel = () => {
     setShowEdit(false);
+    showNotification("Edit cancelled", "error");
   };
 
-  // Extract chat mode from URL (last segment: 'send' or 'received')
+  // Detect chat mode from path
   const pathSegments = location.pathname.split("/");
   const chatMode = pathSegments[pathSegments.length - 1];
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
+      {/* Notification */}
+      {notification.show && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
+
+      {/* Sidebar - User list */}
       <div className="w-1/3 bg-gray-100 border-r overflow-y-auto flex flex-col">
         <div className="p-4 border-b bg-white font-semibold text-lg">Users</div>
         <div className="flex-1 overflow-y-auto">
@@ -86,9 +120,9 @@ const UserList = () => {
         </div>
       </div>
 
-      {/* Right Section */}
+      {/* Chat Section / Edit Panel */}
       <div className="w-2/3 relative flex flex-col">
-        {/* 3-dot menu top right */}
+        {/* 3-dot menu (Edit toggle) */}
         <div className="absolute top-4 right-4 z-10">
           <button
             onClick={handleEditClick}
@@ -102,13 +136,14 @@ const UserList = () => {
         {showEdit ? (
           <div className="p-4 overflow-auto">
             <UserCard
-              user={currentUser} // Always edit current logged-in user
+              user={currentUser}
               onUpdate={handleUpdate}
               onCancel={handleCancel}
             />
           </div>
         ) : selectedUser ? (
           <>
+            {/* Chat Header */}
             <div className="p-4 flex items-center gap-3 bg-white border-b">
               <img
                 src={selectedUser.profileImage || "/default.png"}
@@ -123,9 +158,13 @@ const UserList = () => {
               </div>
             </div>
 
+            {/* Chat Body */}
             <div className="flex-grow overflow-y-auto p-4">
               {chatMode === "send" && (
-                <SendChat receiverId={receiverId} selectedUser={selectedUser} />
+                <SendChat
+                  receiverId={receiverId}
+                  selectedUser={selectedUser}
+                />
               )}
               {chatMode === "received" && (
                 <ReceivedChat

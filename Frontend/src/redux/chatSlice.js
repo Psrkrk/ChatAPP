@@ -33,23 +33,38 @@ const initialState = {
 const chatSlice = createSlice({
   name: "chat",
   initialState,
-  reducers: {
-    clearMessages: (state) => {
-      state.messages = [];
-    },
+reducers: {
+  clearMessages: (state) => {
+    state.messages = [];
   },
+  addOptimisticMessage: (state, action) => {
+    state.messages.push(action.payload);
+  },
+  updateMessageStatus: (state, action) => {
+    const { tempId, status, messageId } = action.payload;
+    const msg = state.messages.find((m) => m.timestamp === tempId);
+    if (msg) {
+      msg.status = status;
+      if (messageId) msg.messageId = messageId;
+    }
+  },
+  receiveMessage: (state, action) => {
+    // Prevent duplicates
+    const exists = state.messages.some((m) => m.messageId === action.payload.messageId);
+    if (!exists) {
+      state.messages.push({ ...action.payload, status: "sent" });
+    }
+  },
+},
+
   extraReducers: (builder) => {
     builder
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
       })
-      .addCase(sendMessage.fulfilled, (state, action) => {
+      .addCase(sendMessage.fulfilled, (state) => {
         state.loading = false;
-        state.messages.push({
-          ...action.payload,
-          sender: "me",
-          status: "sent",
-        });
+        // Don't push again; we already optimistically added
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.loading = false;
@@ -70,5 +85,11 @@ const chatSlice = createSlice({
   },
 });
 
-export const { clearMessages } = chatSlice.actions;
+export const {
+  clearMessages,
+  appendMessage,
+  addOptimisticMessage,
+  updateMessageStatus,
+} = chatSlice.actions;
+
 export default chatSlice.reducer;
