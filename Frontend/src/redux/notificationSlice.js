@@ -85,7 +85,7 @@ const notificationSlice = createSlice({
 
       // Create Notification
       .addCase(createNotification.fulfilled, (state, action) => {
-        state.notifications.unshift(action.payload); // Add to top
+        state.notifications.unshift(action.payload); // Add new notification at the top
       })
       .addCase(createNotification.rejected, (state, action) => {
         state.error = action.payload;

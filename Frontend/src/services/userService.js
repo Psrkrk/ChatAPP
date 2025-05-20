@@ -1,11 +1,12 @@
 // src/services/userService.js
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+// Base API URL from env or fallback to localhost
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1").replace(/\/+$/, '');
 
-// Helper: Get auth token
+// Helper: Get auth token from localStorage
 const getAuthToken = () => localStorage.getItem("authToken");
 
-// Helper: Centralized API error handler
+// Helper: Centralized error handler
 const handleAPIError = async (response) => {
   let errorMessage = "Something went wrong";
   try {
@@ -18,12 +19,13 @@ const handleAPIError = async (response) => {
 };
 
 const userService = {
-  // ✅ Get all users (requires auth)
+  // ✅ Fetch all users (GET /user)
   getAllUsers: async () => {
     const token = getAuthToken();
     if (!token) throw new Error("Authentication token missing");
 
     const response = await fetch(`${API_BASE_URL}/user`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -33,7 +35,7 @@ const userService = {
     return await response.json();
   },
 
-  // ✅ Update user profile (name and/or profile image)
+  // ✅ Update user profile (PUT /user/update-profile)
   updateProfile: async ({ fullname, profileImage }) => {
     const token = getAuthToken();
     if (!token) throw new Error("Authentication token missing");
@@ -46,7 +48,7 @@ const userService = {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
-        // Don't set 'Content-Type' manually when sending FormData
+        // Don't set 'Content-Type' when using FormData
       },
       body: formData,
     });

@@ -1,3 +1,5 @@
+// src/redux/userSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "react-toastify";
 import userService from "../services/userService";
@@ -10,13 +12,13 @@ const initialState = {
   error: null,
 };
 
-// 🔄 Update user profile
+// 🔄 Update user profile (now accepts FormData)
 export const updateProfile = createAsyncThunk(
   "user/updateProfile",
-  async ({ fullname, profileImage }, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      const response = await userService.updateProfile({ fullname, profileImage });
-      return response.user; // The updated user object
+      const response = await userService.updateProfile(formData);
+      return response.user;
     } catch (error) {
       return rejectWithValue(error.message || "Failed to update profile");
     }
@@ -29,7 +31,7 @@ export const getAllUsers = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await userService.getAllUsers();
-      return response.users; // Assumes API returns { users: [...] }
+      return response.users;
     } catch (error) {
       return rejectWithValue(error.message || "Failed to fetch users");
     }
@@ -62,7 +64,7 @@ const userSlice = createSlice({
       .addCase(getAllUsers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-        toast.error(action.payload || "Failed to fetch users"); // Show error toast
+        toast.error(action.payload || "Failed to fetch users");
       })
 
       // ✏️ Update Profile
@@ -75,18 +77,20 @@ const userSlice = createSlice({
         state.userProfile = action.payload;
         state.profileImageUrl = action.payload?.profileImage || null;
 
-        // Sync the updated user with the list
-        const index = state.users.findIndex(user => user._id === action.payload._id);
-        if (index !== -1) {
-          state.users[index] = action.payload;
+        // Sync updated user in the list
+        if (state.users.length > 0) {
+          const index = state.users.findIndex(user => user._id === action.payload._id);
+          if (index !== -1) {
+            state.users[index] = action.payload;
+          }
         }
 
-        // Note: Success toast already shown in `userService`, no duplicate here
+        toast.success("Profile updated successfully");
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Something went wrong";
-        toast.error(action.payload || "Failed to update profile"); // Show error toast
+        toast.error(action.payload || "Failed to update profile");
       });
   },
 });

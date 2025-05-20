@@ -11,28 +11,38 @@ import { useNavigate } from "react-router-dom";
 const Notification = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { items, loading, error } = useSelector((state) => state.notifications);
+
+  // Get current logged-in userId from auth slice (adjust path if different)
+  const userId = useSelector((state) => state.auth.user?._id);
+
+  // Select notifications state
+  const notificationsState = useSelector((state) => state.notifications || {});
+  const { notifications = [], isLoading = false, error = null } = notificationsState;
 
   useEffect(() => {
-    dispatch(getNotifications());
-  }, [dispatch]);
+    if (userId) {
+      dispatch(getNotifications(userId));
+    }
+  }, [dispatch, userId]);
 
   const handleMarkAsRead = (id) => {
     dispatch(markNotificationAsRead(id));
   };
 
   const handleCreate = () => {
+    if (!userId) return;
     const newNotification = {
-      title: "Test Notification",
+      userId, // send notification to current user (adjust as needed)
+      type: "message",
       message: "You received a new message from John!",
-      receiverId: "USER_ID_HERE", // Replace with real receiverId
+      read: false,
     };
     dispatch(createNotification(newNotification));
   };
 
   const handleNotificationClick = (notification) => {
-    if (notification?.receiverId) {
-      navigate(`/chats/${notification.receiverId}/received`);
+    if (notification?.userId) {
+      navigate(`/chats/${notification.userId}/received`);
       dispatch(markNotificationAsRead(notification._id));
     }
   };
@@ -51,15 +61,15 @@ const Notification = () => {
         </button>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <p>Loading notifications...</p>
       ) : error ? (
         <p className="text-red-500">{error}</p>
-      ) : items.length === 0 ? (
+      ) : notifications.length === 0 ? (
         <p className="text-gray-500">No notifications found.</p>
       ) : (
         <ul className="space-y-4">
-          {items.map((notification) => (
+          {notifications.map((notification) => (
             <li
               key={notification._id}
               onClick={() => handleNotificationClick(notification)}
@@ -69,7 +79,9 @@ const Notification = () => {
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-semibold text-gray-800">{notification.title}</h3>
+                  <h3 className="font-semibold text-gray-800">
+                    {notification.type?.toUpperCase()}
+                  </h3>
                   <p className="text-sm text-gray-600">{notification.message}</p>
                 </div>
                 {!notification.read && (
@@ -79,6 +91,7 @@ const Notification = () => {
                       handleMarkAsRead(notification._id);
                     }}
                     className="text-green-600 hover:text-green-800"
+                    aria-label="Mark as read"
                   >
                     <CheckIcon className="w-5 h-5" />
                   </button>
