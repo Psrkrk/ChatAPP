@@ -1,196 +1,204 @@
-// import React, { useEffect, useState } from "react";
-// import { useDispatch, useSelector } from "react-redux";
-// import { updateProfile } from "../../redux/userSlice";
-// import { toast } from "react-toastify";
+// // src/pages/User/UserCard.jsx
+// import React, { useState, useRef, useEffect, useCallback } from "react";
+// import { HiDotsVertical } from "react-icons/hi";
+// import { useNavigate } from "react-router-dom";
+// import { useDispatch } from "react-redux";
+// import { updateProfile, setUserProfile } from "../../redux/userSlice";
 
-// const UserCard = ({ user = {}, onUpdate, onCancel }) => {
+// const UserCard = ({
+//   currentUser,
+//   previewImage,
+//   setPreviewImage,
+//   editData,
+//   setEditData,
+//   showEdit,
+//   setShowEdit,
+//   showNotification,
+// }) => {
 //   const dispatch = useDispatch();
-//   const { isLoading } = useSelector((state) => state.user);
+//   const navigate = useNavigate();
+//   const [showOptions, setShowOptions] = useState(false);
+//   const optionsRef = useRef(null);
 
-//   const [fullname, setFullname] = useState(user.fullname || "");
-//   const [profileImage, setProfileImage] = useState(null);
-//   const [previewImage, setPreviewImage] = useState(user.profileImage || "/default-user.png");
-
-//   // Prevent unnecessary resets and flickers
 //   useEffect(() => {
-//     setFullname((prev) => {
-//       return prev !== (user.fullname || "") ? user.fullname || "" : prev;
+//     const handleClickOutside = (event) => {
+//       if (optionsRef.current && !optionsRef.current.contains(event.target)) {
+//         setShowOptions(false);
+//       }
+//     };
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
+
+//   const handleImageChange = useCallback(
+//     (e) => {
+//       const file = e.target.files[0];
+//       if (!file) return;
+
+//       if (!file.type.match("image.*")) {
+//         showNotification("Please select an image file", "error");
+//         return;
+//       }
+
+//       if (file.size > 2 * 1024 * 1024) {
+//         showNotification("Image size should be less than 2MB", "error");
+//         return;
+//       }
+
+//       setEditData((d) => ({ ...d, profileImage: file }));
+//       setPreviewImage(URL.createObjectURL(file));
+//     },
+//     [setEditData, setPreviewImage, showNotification]
+//   );
+
+//   const handleCancel = useCallback(() => {
+//     setShowEdit(false);
+//     setEditData({
+//       fullname: currentUser?.fullname || "",
+//       profileImage: null,
 //     });
+//     setPreviewImage(currentUser?.profileImage || "/default-user.png");
+//     showNotification("Edit cancelled", "info");
+//   }, [currentUser, setEditData, setPreviewImage, showNotification, setShowEdit]);
 
-//     setPreviewImage((prev) => {
-//       return prev !== (user.profileImage || "/default-user.png")
-//         ? user.profileImage || "/default-user.png"
-//         : prev;
-//     });
+//   const handleUpdate = useCallback(
+//     async (e) => {
+//       e.preventDefault();
+//       try {
+//         const formData = new FormData();
+//         formData.append("fullname", editData.fullname);
+//         if (editData.profileImage) {
+//           formData.append("profileImage", editData.profileImage);
+//         }
 
-//     setProfileImage(null);
-//   }, [user.fullname, user.profileImage]);
+//         const updated = await dispatch(updateProfile(formData)).unwrap();
+//         dispatch(setUserProfile(updated));
+//         setShowEdit(false);
+//         showNotification("Profile updated successfully!", "success");
+//       } catch {
+//         showNotification("Failed to update profile", "error");
+//       }
+//     },
+//     [dispatch, editData, showNotification, setShowEdit]
+//   );
 
-//   const handleImageChange = (e) => {
-//     const file = e.target.files[0];
-//     if (!file) return;
-
-//     if (!file.type.startsWith("image/")) {
-//       toast.error("Please select a valid image file (JPEG, PNG, etc.)");
-//       return;
-//     }
-
-//     if (file.size > 2 * 1024 * 1024) {
-//       toast.error("Image size must be less than 2MB");
-//       return;
-//     }
-
-//     setProfileImage(file);
-//     setPreviewImage(URL.createObjectURL(file));
-//   };
-
-//   const triggerFileInput = () => {
-//     document.getElementById("profileImage").click();
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-
-//     const trimmedFullname = fullname.trim();
-//     const isFullnameChanged = trimmedFullname !== (user.fullname || "").trim();
-//     const isImageChanged = !!profileImage;
-
-//     if (!isFullnameChanged && !isImageChanged) {
-//       toast.info("No changes detected");
-//       return;
-//     }
-
-//     const formData = new FormData();
-//     if (isFullnameChanged) formData.append("fullname", trimmedFullname);
-//     if (isImageChanged) formData.append("profileImage", profileImage);
-
-//     try {
-//       const resultAction = await dispatch(updateProfile(formData));
-//       const updatedUser = resultAction.payload;
-
-//       toast.success("Profile updated successfully");
-//       onUpdate?.(updatedUser);
-//     } catch (error) {
-//       toast.error(error.message || "Failed to update profile");
-//       console.error("Update error:", error);
-//     }
-//   };
-
-//   const handleCancel = () => {
-//     setFullname(user.fullname || "");
-//     setProfileImage(null);
-//     setPreviewImage(user.profileImage || "/default-user.png");
-//     onCancel?.();
-//   };
-
-//   const isSubmitDisabled =
-//     isLoading ||
-//     (fullname.trim() === (user.fullname || "").trim() && !profileImage);
+//   if (!currentUser) return null;
 
 //   return (
-//     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 border border-gray-200">
-//       <h2 className="text-lg font-semibold text-gray-800 mb-4">Edit Profile</h2>
-
-//       <form onSubmit={handleSubmit} className="space-y-4">
-//         {/* Full Name */}
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 mb-1">
-//             Full Name
-//           </label>
-//           <input
-//             type="text"
-//             value={fullname}
-//             onChange={(e) => setFullname(e.target.value)}
-//             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500"
-//             placeholder="Enter your name"
-//             minLength="2"
-//             maxLength="50"
-//           />
-//         </div>
-
-//         {/* Profile Image Upload */}
-//         <div>
-//           <label className="block text-sm font-medium text-gray-700 mb-1">
-//             Profile Image
-//           </label>
-//           <div className="flex items-center gap-4">
-//             <img
-//               src={previewImage}
-//               alt="Profile preview"
-//               className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 transition-all"
-//               onError={(e) => {
+//     <>
+//       {/* Profile View Mode */}
+//       {!showEdit && (
+//         <div
+//           onClick={() => {
+//             navigate(`/chats/${currentUser._id}/received`);
+//             setShowEdit(false);
+//             setShowOptions(false);
+//           }}
+//           className="p-4 border-t border-gray-200 bg-gray-50 flex items-center gap-3 cursor-pointer hover:bg-gray-100 transition-colors"
+//         >
+//           <img
+//             src={previewImage}
+//             alt={currentUser.fullname}
+//             onError={(e) => {
+//               if (e.target.src !== "/default-user.png") {
 //                 e.target.src = "/default-user.png";
+//               }
+//             }}
+//             className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
+//           />
+//           <div className="flex-1 min-w-0">
+//             <p className="text-sm font-medium text-gray-800 truncate">
+//               {currentUser.fullname}
+//             </p>
+//             <p className="text-xs text-gray-500">Your Profile</p>
+//           </div>
+//           <div className="relative" ref={optionsRef}>
+//             <button
+//               onClick={(e) => {
+//                 e.stopPropagation();
+//                 setShowOptions((v) => !v);
 //               }}
-//             />
+//               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+//               aria-label="Open profile menu"
+//             >
+//               <HiDotsVertical className="w-5 h-5" />
+//             </button>
+//             {showOptions && (
+//               <div className="absolute bottom-full mb-2 right-0 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+//                 <button
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     setShowEdit(true);
+//                     setShowOptions(false);
+//                     navigate(`/chats/${currentUser._id}/received`);
+//                   }}
+//                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-600 hover:text-white transition-colors"
+//                 >
+//                   Edit Profile
+//                 </button>
+//               </div>
+//             )}
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Edit Mode */}
+//       {showEdit && (
+//         <div className="max-w-lg mx-auto p-6 bg-white shadow rounded-md mt-10">
+//           <h3 className="text-xl font-semibold mb-4">Edit Profile</h3>
+//           <form onSubmit={handleUpdate} className="space-y-4">
 //             <div>
-//               <button
-//                 type="button"
-//                 onClick={triggerFileInput}
-//                 className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-//               >
-//                 Change Image
-//               </button>
+//               <label className="block text-sm font-medium text-gray-700 mb-1">
+//                 Full Name
+//               </label>
 //               <input
-//                 id="profileImage"
+//                 type="text"
+//                 value={editData.fullname || ""}
+//                 onChange={(e) =>
+//                   setEditData((d) => ({ ...d, fullname: e.target.value }))
+//                 }
+//                 required
+//                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+//               />
+//             </div>
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-1">
+//                 Profile Image
+//               </label>
+//               <input
 //                 type="file"
 //                 accept="image/*"
 //                 onChange={handleImageChange}
-//                 className="hidden"
+//                 className="block"
+//                 aria-label="Choose profile image"
 //               />
+//               {previewImage && (
+//                 <img
+//                   src={previewImage}
+//                   alt="Preview"
+//                   className="mt-2 w-24 h-24 object-cover rounded-full border border-gray-300"
+//                 />
+//               )}
 //             </div>
-//           </div>
-//           <p className="text-xs text-gray-500 mt-1">
-//             Max 2MB (JPEG, PNG, etc.)
-//           </p>
+//             <div className="flex gap-3 justify-end">
+//               <button
+//                 type="button"
+//                 onClick={handleCancel}
+//                 className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 type="submit"
+//                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+//               >
+//                 Update
+//               </button>
+//             </div>
+//           </form>
 //         </div>
-
-//         {/* Buttons */}
-//         <div className="flex justify-end items-center space-x-3 pt-4">
-//           <button
-//             type="button"
-//             onClick={handleCancel}
-//             disabled={isLoading}
-//             className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-//           >
-//             Cancel
-//           </button>
-
-//           <button
-//             type="submit"
-//             disabled={isSubmitDisabled}
-//             className="px-4 py-2 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-//           >
-//             {isLoading ? (
-//               <span className="flex items-center">
-//                 <svg
-//                   className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   fill="none"
-//                   viewBox="0 0 24 24"
-//                 >
-//                   <circle
-//                     className="opacity-25"
-//                     cx="12"
-//                     cy="12"
-//                     r="10"
-//                     stroke="currentColor"
-//                     strokeWidth="4"
-//                   ></circle>
-//                   <path
-//                     className="opacity-75"
-//                     fill="currentColor"
-//                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-//                   ></path>
-//                 </svg>
-//                 Saving...
-//               </span>
-//             ) : (
-//               "Save Changes"
-//             )}
-//           </button>
-//         </div>
-//       </form>
-//     </div>
+//       )}
+//     </>
 //   );
 // };
 
