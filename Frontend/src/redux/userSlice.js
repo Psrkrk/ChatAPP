@@ -1,40 +1,50 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { toast } from "react-toastify";
 import userService from "../services/userService";
 
 // Initial state
 const initialState = {
-  users: [],
-  user: null, // Renamed from userProfile to match UserList.jsx expectation
+  users: [], // List of all users
+  user: null, // Current logged-in user profile
   isLoading: false,
   error: null,
 };
 
-// ✅ Update user profile
+// ✅ Get all users thunk
+export const getAllUsers = createAsyncThunk(
+  "user/getAllUsers",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await userService.getAllUsers();
+      return response.users || response; // Handle varying response structures
+    } catch (error) {
+      return rejectWithValue(error.message || "Failed to fetch users");
+    }
+  }
+);
+
+// ✅ Update user profile thunk
 export const updateProfile = createAsyncThunk(
   "user/updateProfile",
-  async (formData, { rejectWithValue }) => {
+  async ({ fullname, profileImage }, { rejectWithValue }) => {
     try {
-      const response = await userService.updateProfile(formData); // response contains { success, message, user, profileImage }
-      return {
-        user: response.user,
-        profileImage: response.profileImage,
-      };
+      const response = await userService.updateProfile({ fullname, profileImage });
+      return response.user || response; // Handle varying response structures
     } catch (error) {
       return rejectWithValue(error.message || "Failed to update profile");
     }
   }
 );
 
-// ✅ Get all users
-export const getAllUsers = createAsyncThunk(
-  "user/getAllUsers",
+// ✅ Logout thunk
+export const logoutUser = createAsyncThunk(
+  "user/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await userService.getAllUsers();
-      return response.users;
+      // Clear auth token from localStorage
+      localStorage.removeItem("authToken");
+      return null; // No API call needed for logout
     } catch (error) {
-      return rejectWithValue(error.message || "Failed to fetch users");
+      return rejectWithValue(error.message || "Failed to logout");
     }
   }
 );
@@ -53,64 +63,73 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // 🔃 Get Users
+      // 🔹 getAllUsers
       .addCase(getAllUsers.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(getAllUsers.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.users = action.payload;
-        // Update the current user if it exists in the fetched users
-        const currentUser = action.payload.find(user => user._id === state.user?._id);
-        if (currentUser) {
-          state.user = currentUser;
+        state.users = Array.isArray(action.payload) ? action.payload : action.payload.users || [];
+        // Update current user if matching
+        if (state.user && Array.isArray(action.payload)) {
+          const currentUser = action.payload.find(
+            (user) => user._id === state.user._id
+          );
+          if (currentUser) {
+            state.user = currentUser;
+          }
         }
       })
       .addCase(getAllUsers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-        toast.error(action.payload || "Failed to fetch users");
+        // Toast handled by userService
       })
 
-      // ✏️ Update Profile
+      // 🔹 updateProfile
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-     .addCase(updateProfile.fulfilled, (state, action) => {
-  state.isLoading = false;
-
-  const updatedUser = action.payload.user;
-  const updatedProfileImage = action.payload.profileImage;
-
-  // Update current logged-in user info in state.user
-  state.user = {
-    ...updatedUser,
-    profileImage: updatedProfileImage,
-  };
-
-  // Update the user in the users list if present
-  if (Array.isArray(state.users)) {
-    const index = state.users.findIndex(user => user._id === updatedUser._id);
-    if (index !== -1) {
-      state.users[index] = {
-        ...updatedUser,
-        profileImage: updatedProfileImage,
-      };
-    }
-  }
-
-  toast.success("Profile updated successfully");
-})
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        // Update the user in the users array if it exists
+        if (state.users.length > 0 && action.payload._id) {
+          const userIndex = state.users.findIndex(
+            (user) => user._id === action.payload._id
+          );
+          if (userIndex !== -1) {
+            state.users[userIndex] = action.payload;
+          }
+        }
+        // Toast handled by userService
+      })
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-        toast.error(action.payload || "Failed to update profile");
+        // Toast handled by userService
+      })
+
+      // 🔹 logoutUser
+      .addCase(logoutUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.users = [];
+        // No toast for logout
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        // Toast handled by userService or show here if needed
       });
-  }
+  },
 });
 
-// Export actions and reducer
 export const { clearUserError, setUserProfile } = userSlice.actions;
 export default userSlice.reducer;

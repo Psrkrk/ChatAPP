@@ -11,7 +11,7 @@ export const updateUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
     const { fullname } = req.body;
-    const profileImageFile = req.file;
+    const profileImage = req.file;
 
     if (!userId) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
@@ -22,33 +22,16 @@ export const updateUserProfile = async (req, res) => {
       return res.status(404).json({ success: false, error: "User not found" });
     }
 
-    const trimmedFullname = fullname?.trim();
-    const isFullnameValid = trimmedFullname?.length >= 2;
-    const isNewImageUploaded = !!profileImageFile;
-
-    if (!isFullnameValid && !isNewImageUploaded) {
-      return res.status(400).json({
-        success: false,
-        error: "No valid data provided. Please provide a valid name or profile image.",
-      });
-    }
-
     const updateData = {};
 
-    // ✅ Update name if it's different and valid
-    if (isFullnameValid && trimmedFullname !== user.fullname) {
-      const existingUser = await User.findOne({ fullname: trimmedFullname });
-      if (existingUser && existingUser._id.toString() !== userId) {
-        return res.status(400).json({
-          success: false,
-          error: "Name is already in use by another account",
-        });
-      }
-      updateData.fullname = trimmedFullname;
+    // 🚀 Always replace name if provided
+    if (fullname) {
+      updateData.fullname = fullname.trim();
     }
 
-    // ✅ Handle new profile image
-    if (isNewImageUploaded) {
+    // 🚀 Always replace profile image if provided
+    if (profileImage) {
+      // Delete old profile image if exists
       if (user.profileImage) {
         const oldImagePath = path.join(__dirname, "../../public", user.profileImage);
         try {
@@ -58,11 +41,10 @@ export const updateUserProfile = async (req, res) => {
         }
       }
 
-      // Store new image path
-      updateData.profileImage = `/uploads/${profileImageFile.filename}`;
+      // Save new image path
+      updateData.profileImage = `/uploads/${profileImage.filename}`;
     }
 
-    // ✅ Save updates to DB
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
       runValidators: true,
@@ -78,8 +60,7 @@ export const updateUserProfile = async (req, res) => {
       user: updatedUser,
       profileImage: profileImageUrl,
     });
-console.log("BODY:", req.body);
-console.log("FILE:", req.file);
+
   } catch (error) {
     console.error("Error in updateUserProfile:", error);
     return res.status(500).json({

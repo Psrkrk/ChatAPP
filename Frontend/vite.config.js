@@ -13,6 +13,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/uploads/, ''),
       },
+      '/socket.io/': {
+        target: 'http://localhost:5000',
+        ws: true, // WebSocket support
+        changeOrigin: true,
+      },
     },
   },
 });

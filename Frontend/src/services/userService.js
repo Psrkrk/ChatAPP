@@ -1,14 +1,14 @@
 import { toast } from "react-toastify";
 
-// ⛳ Use environment variable for deployment safety
+// Use environment variable for deployment safety
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
-// ⛽ Token getter (can be adapted for cookies/session)
-const getAuthToken = () => localStorage.getItem("authToken");
+// Token getter (assumes token is stored in localStorage)
+const getAuthToken = () => localStorage.getItem("authToken") || null;
 
-// 🧯 Centralized API error handler
+// Centralized API error handler
 const handleAPIError = async (response) => {
-  let errorMessage = "Something went wrong";
+  let errorMessage = `API error: ${response.status} ${response.statusText}`;
   try {
     const data = await response.json();
     errorMessage = data.error || data.message || errorMessage;
@@ -19,7 +19,7 @@ const handleAPIError = async (response) => {
 };
 
 const userService = {
-  // ✅ Get all users (GET /user)
+  // Get all users (GET /user)
   getAllUsers: async () => {
     try {
       const token = getAuthToken();
@@ -29,6 +29,7 @@ const userService = {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
@@ -41,27 +42,31 @@ const userService = {
     }
   },
 
-  // ✅ Update user profile (PUT /user/update-profile)
+  // Update user profile (PUT /user/update-profile)
   updateProfile: async ({ fullname, profileImage }) => {
     try {
       const token = getAuthToken();
       if (!token) throw new Error("Authentication token missing");
 
       const formData = new FormData();
-      if (fullname) formData.append("fullname", fullname.trim());
-      if (profileImage) formData.append("profileImage", profileImage); // must be File object
+      formData.append("fullname", fullname);
+      if (profileImage) {
+        formData.append("profileImage", profileImage); // Use profileImage from parameters
+      }
 
       const response = await fetch(`${API_BASE_URL}/user/update-profile`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
-          // Don't set Content-Type when using FormData
         },
         body: formData,
       });
 
       if (!response.ok) await handleAPIError(response);
+
       const result = await response.json();
+
+      console.log("updateProfile result:", result);
 
       if (result.message?.toLowerCase().includes("updated")) {
         toast.success(result.message || "Profile updated successfully");
@@ -76,4 +81,5 @@ const userService = {
   },
 };
 
+// Export userService
 export default userService;

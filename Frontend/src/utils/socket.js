@@ -1,8 +1,8 @@
 import { io } from 'socket.io-client';
 
-// Use your backend WebSocket URL here
-const socket = io('http://localhost:5000', {
-  transports: ['websocket'],
+// Use relative path so Vite proxy handles it during development
+const socket = io('/', {
+  transports: ['websocket'], // or omit if not needed
   autoConnect: false,
 });
 
