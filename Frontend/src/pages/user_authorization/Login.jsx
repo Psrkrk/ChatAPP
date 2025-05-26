@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../redux/authSlice";
 import { motion } from "framer-motion";
 import { FiMail, FiLock, FiLoader, FiArrowRight } from "react-icons/fi";
-import { getNotifications } from "../../redux/notificationSlice";
+
 
 
 const Login = () => {

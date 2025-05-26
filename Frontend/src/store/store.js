@@ -9,8 +9,9 @@ const store = configureStore({
     auth: authReducer,
     user: userReducer, // Uncomment if you want to include userSlice
     chat: chatReducer, // Uncomment if chatSlice exists and is needed
-    notification: notificationReducer
-  },
+
+  notifications: notificationReducer, // Correct key
+},
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
