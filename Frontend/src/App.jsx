@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+// import  MainLayout from "./Layout/MainLayout.jsx";
 import HomePage from "./pages/user_acesss/HomePage.jsx";
 import Signup from "./pages/user_authorization/Signup.jsx";
 import Login from "./pages/user_authorization/Login.jsx";
@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/protectedroute/ProtectedRoute.jsx";
 import UserList from "./pages/user_connections/UserList.jsx";
 import SendChat from "./pages/user_connections/SendChat.jsx";
 import ReceivedChat from "./pages/user_connections/ReceivedChat.jsx";
+import Service from "./components/Service.jsx";
 // import BlockedUserList from "./pages/settings/BlockedUserList.jsx";
 // // import Settings from "./pages/settings/Settings.jsx";
 // import BlockedUser from "./pages/settings/BlockedUser.jsx";
@@ -30,6 +31,7 @@ function App() {
          <Route path="/" element={<HomePage />} />
         {/* Public Auth and Forgot Password Routes */}
         <Route path="/signup" element={<Signup />} />
+        <Route path="/services" element={<Service />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<SendOTP />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />

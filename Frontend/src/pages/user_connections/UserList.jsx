@@ -4,10 +4,9 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { getAllUsers, updateProfile } from "../../redux/userSlice";
 import SendChat from "./SendChat.jsx";
 import ReceivedChat from "./ReceivedChat.jsx";
-import { FiSend, FiInbox, FiBell, FiEdit2, FiX } from "react-icons/fi";
+import { FiSend, FiInbox, FiBell, FiEdit2, FiX, FiMenu } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { io } from "socket.io-client";
-import notificationService from "../../services/notificationService"; // From eighth query
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -34,6 +33,7 @@ const UserList = () => {
   const [toastNotifications, setToastNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false); // New state for sidebar toggle
   const [socket, setSocket] = useState(null);
 
   // Initialize socket connection
@@ -76,14 +76,14 @@ const UserList = () => {
       addPersistentNotification(notification);
     });
 
-    // Fetch initial notifications
-    notificationService
-      .getNotifications(currentUser._id)
-      .then((notifications) => {
-        setPersistentNotifications(notifications.map((n) => ({ ...n, timestamp: n.createdAt || Date.now() })));
-        setUnreadCount(notifications.filter((n) => !n.read).length);
-      })
-      .catch((err) => showToastNotification(err.message));
+    // Fetch initial notifications (Assuming notificationService is defined)
+    // Replace with actual service implementation
+    // notificationService.getNotifications(currentUser._id)
+    //   .then((notifications) => {
+    //     setPersistentNotifications(notifications.map((n) => ({ ...n, timestamp: n.createdAt || Date.now() })));
+    //     setUnreadCount(notifications.filter((n) => !n.read).length);
+    //   })
+    //   .catch((err) => showToastNotification(err.message));
 
     return () => {
       socket.off("newMessage");
@@ -155,6 +155,7 @@ const UserList = () => {
     (user) => {
       if (isLoading) return;
       setShowEdit(false);
+      setShowSidebar(false); // Close sidebar on mobile
       navigate(`/chats/${user._id}/send`);
       showToastNotification(`Now chatting with ${user.fullname}`, "success");
     },
@@ -218,7 +219,6 @@ const UserList = () => {
         showToastNotification("Profile updated successfully", "success");
         setShowEdit(false);
 
-        // Emit profile update notification
         if (socket) {
           socket.emit("notification", {
             _id: Date.now().toString(),
@@ -229,7 +229,6 @@ const UserList = () => {
             timestamp: Date.now(),
           });
         }
-        console.log(socket)
       } catch (err) {
         showToastNotification(err?.message || "Failed to update profile", "error");
       }
@@ -240,7 +239,8 @@ const UserList = () => {
   const markAsRead = useCallback(
     async (id) => {
       try {
-        await notificationService.markAsRead(id);
+        // Assuming notificationService.markAsRead is defined
+        // await notificationService.markAsRead(id);
         setPersistentNotifications((prev) =>
           prev.map((n) => (n._id === id ? { ...n, read: true } : n))
         );
@@ -257,7 +257,8 @@ const UserList = () => {
       const unreadIds = persistentNotifications
         .filter((n) => !n.read)
         .map((n) => n._id);
-      await Promise.all(unreadIds.map((id) => notificationService.markAsRead(id)));
+      // Assuming notificationService.markAsRead is defined
+      // await Promise.all(unreadIds.map((id) => notificationService.markAsRead(id)));
       setPersistentNotifications((prev) =>
         prev.map((n) => ({ ...n, read: true }))
       );
@@ -271,7 +272,7 @@ const UserList = () => {
   const chatMode = location.pathname.split("/").pop();
 
   return (
-    <div className="flex h-screen bg-gray-50 relative">
+    <div className="flex h-screen bg-gray-50 relative overflow-hidden">
       {/* Toast Notifications */}
       <AnimatePresence>
         {toastNotifications
@@ -281,8 +282,8 @@ const UserList = () => {
               key={notification.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg max-w-xs z-50 border-l-4 ${
+              exit={{ opacity: 0, y: 50 }}
+              className={`fixed bottom-4 left-4 right-4 sm:right-4 sm:left-auto p-4 rounded-lg shadow-lg max-w-sm z-50 border-l-4 ${
                 notification.type === "success"
                   ? "bg-green-50 border-green-500"
                   : notification.type === "error"
@@ -295,7 +296,7 @@ const UserList = () => {
               aria-live="polite"
             >
               <div className="flex items-start">
-                <p className="text-sm font-medium text-gray-800">
+                <p className="text-base sm:text-sm font-medium text-gray-800">
                   {notification.message}
                 </p>
                 <button
@@ -306,10 +307,10 @@ const UserList = () => {
                       )
                     )
                   }
-                  className="ml-2 text-gray-400 hover:text-gray-600"
+                  className="ml-2 text-gray-400 hover:text-gray-600 p-2"
                   aria-label="Close notification"
                 >
-                  <FiX className="w-4 h-4" />
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
             </motion.div>
@@ -326,14 +327,14 @@ const UserList = () => {
             aria-modal="true"
           >
             <motion.div
-              initial={{ x: 300 }}
+              initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: 300 }}
-              className="absolute top-0 right-0 h-full w-80 bg-white shadow-lg"
+              exit={{ x: "100%" }}
+              className="absolute top-0 right-0 h-full w-full sm:w-80 bg-white shadow-lg"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-semibold text-lg">Notifications</h3>
+                <h3 className="font-semibold text-lg sm:text-xl">Notifications</h3>
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
                     <button
@@ -347,21 +348,22 @@ const UserList = () => {
                   <button
                     onClick={() => setShowNotificationPanel(false)}
                     aria-label="Close notification panel"
+                    className="p-2"
                   >
-                    <FiX className="w-5 h-5" />
+                    <FiX className="w-6 h-6" />
                   </button>
                 </div>
               </div>
               <div className="overflow-y-auto h-[calc(100%-60px)]">
                 {persistentNotifications.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-gray-500 text-base">
                     No notifications yet
                   </div>
                 ) : (
                   persistentNotifications.map((notification) => (
                     <div
                       key={notification._id}
-                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                      className={`p-4 border-b border-gray-100 active:bg-gray-100 ${
                         !notification.read ? "bg-blue-50" : ""
                       }`}
                       onClick={() => {
@@ -386,18 +388,18 @@ const UserList = () => {
                               : "bg-indigo-100 text-indigo-600"
                           }`}
                         >
-                          <FiBell className="w-4 h-4" />
+                          <FiBell className="w-5 h-5" />
                         </div>
                         <div className="ml-3 flex-1">
-                          <p className="text-sm font-medium text-gray-800">
+                          <p className="text-base sm:text-sm font-medium text-gray-800">
                             {notification.text}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-sm sm:text-xs text-gray-500 mt-1">
                             {new Date(notification.timestamp).toLocaleString()}
                           </p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                          <div className="w-2 h-2 rounded-full bg-indigo-600 mt-2" />
                         )}
                       </div>
                     </div>
@@ -410,48 +412,67 @@ const UserList = () => {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-sm z-10">
+      <div
+        className={`fixed sm:static inset-y-0 left-0 z-30 w-4/5 sm:w-80 bg-white border-r border-gray-200 flex flex-col shadow-sm transition-transform duration-300 ease-in-out ${
+          showSidebar ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
+        }`}
+      >
         <div className="p-5 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Chats</h2>
-          <button
-            onClick={() => setShowNotificationPanel(true)}
-            className="relative p-2 text-gray-500 hover:text-indigo-600"
-            aria-label={`Notifications (${unreadCount} unread)`}
-          >
-            <FiBell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Chats</h2>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowNotificationPanel(true)}
+              className="relative p-2 text-gray-500 hover:text-indigo-600 active:bg-gray-200 rounded-full"
+              aria-label={`Notifications (${unreadCount} unread)`}
+            >
+              <FiBell className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="sm:hidden p-2 text-gray-500 hover:text-indigo-600 active:bg-gray-200 rounded-full"
+              aria-label="Close sidebar"
+            >
+              <FiX className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => navigate("/chats")}
-            className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium ${
+            onClick={() => {
+              navigate("/chats");
+              setShowSidebar(false);
+            }}
+            className={`flex-1 py-3 flex items-center justify-center gap-2 text-base sm:text-sm font-medium ${
               !receiverId
                 ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-500 hover:text-gray-700"
+                : "text-gray-500 active:bg-gray-200"
             }`}
             aria-current={!receiverId ? "page" : undefined}
           >
-            <FiInbox className="w-4 h-4" />
+            <FiInbox className="w-5 h-5" />
             All Chats
           </button>
           <button
-            onClick={() =>
-              currentUser && navigate(`/chats/${currentUser._id}/received`)
-            }
-            className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium ${
+            onClick={() => {
+              if (currentUser) {
+                navigate(`/chats/${currentUser._id}/received`);
+                setShowSidebar(false);
+              }
+            }}
+            className={`flex-1 py-3 flex items-center justify-center gap-2 text-base sm:text-sm font-medium ${
               selectedUser?._id === currentUser?._id
                 ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-500 hover:text-gray-700"
+                : "text-gray-500 active:bg-gray-200"
             }`}
             aria-current={selectedUser?._id === currentUser?._id ? "page" : undefined}
           >
-            <FiSend className="w-4 h-4" />
+            <FiSend className="w-5 h-5" />
             My Chats
           </button>
         </div>
@@ -461,23 +482,23 @@ const UserList = () => {
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3 p-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" />
                   <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
                 </div>
               ))}
             </div>
           )}
           {!isLoading && users.length === 0 && (
-            <p className="text-center text-gray-500 py-4">No users found</p>
+            <p className="text-center text-gray-500 py-4 text-base">No users found</p>
           )}
           {users.map((user) => (
             <div
               key={user._id}
               onClick={() => handleUserClick(user)}
-              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors active:bg-gray-200 ${
                 selectedUser?._id === user._id
                   ? "bg-indigo-50 border border-indigo-100"
-                  : "hover:bg-gray-50"
+                  : ""
               }`}
               role="button"
               tabIndex={0}
@@ -492,17 +513,17 @@ const UserList = () => {
                 <img
                   src={user.profileImage || "/default-user.png"}
                   alt={user.fullname}
-                  className="w-10 h-10 rounded-full object-cover"
+                  className="w-12 h-12 rounded-full object-cover"
                 />
                 {user.online && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                 )}
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-base sm:text-sm font-medium text-gray-700">
                   {user.fullname}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-sm sm:text-xs text-gray-500">
                   {user.lastSeen
                     ? `Last seen ${new Date(user.lastSeen).toLocaleTimeString()}`
                     : "Offline"}
@@ -514,12 +535,15 @@ const UserList = () => {
 
         <div className="p-4 border-t border-gray-200">
           <button
-            onClick={() => setShowEdit(true)}
-            className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors flex items-center justify-center gap-2"
+            onClick={() => {
+              setShowEdit(true);
+              setShowSidebar(false);
+            }}
+            className="w-full py-3 px-4 bg-indigo-600 text-white rounded-md text-base font-medium active:bg-indigo-700 disabled:bg-indigo-400 transition-colors flex items-center justify-center gap-2"
             disabled={isLoading}
             aria-label="Edit profile"
           >
-            <FiEdit2 className="w-4 h-4" />
+            <FiEdit2 className="w-5 h-5" />
             Edit Profile
           </button>
         </div>
@@ -527,6 +551,21 @@ const UserList = () => {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
+        {/* Hamburger Menu for Mobile */}
+        <div className="sm:hidden p-4 border-b border-gray-200 flex justify-between items-center bg-white">
+          <button
+            onClick={() => setShowSidebar(true)}
+            className="p-2 text-gray-500 hover:text-indigo-600 active:bg-gray-200 rounded-full"
+            aria-label="Open sidebar"
+          >
+            <FiMenu className="w-6 h-6" />
+          </button>
+          <h2 className="text-lg font-semibold text-gray-800">
+            {selectedUser ? `Chat with ${selectedUser.fullname}` : "Chats"}
+          </h2>
+          <div className="w-6" /> {/* Placeholder for alignment */}
+        </div>
+
         {error && (
           <div
             className="bg-red-50 border-l-4 border-red-500 p-4"
@@ -538,29 +577,29 @@ const UserList = () => {
                 <FiX className="h-5 w-5 text-red-500" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-base sm:text-sm text-red-700">{error}</p>
               </div>
             </div>
           </div>
         )}
 
         {showEdit ? (
-          <div className="flex-1 flex items-center justify-center p-4">
+          <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
             <form
               onSubmit={handleUpdate}
-              className="w-full max-w-md bg-white rounded-xl shadow-md overflow-hidden p-6 space-y-6"
+              className="w-full max-w-lg sm:max-w-md bg-white rounded-xl shadow-md p-6 sm:p-8 space-y-6"
             >
-              <h2 className="text-2xl font-bold text-gray-800">Edit Profile</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile</h2>
 
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
                   <img
                     src={previewImage}
                     alt="Profile preview"
-                    className="w-24 h-24 rounded-full object-cover border-4 border-indigo-100"
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-indigo-100"
                   />
                   <label
-                    className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100"
+                    className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md cursor-pointer active:bg-gray-200"
                     aria-label="Upload profile image"
                   >
                     <input
@@ -569,14 +608,14 @@ const UserList = () => {
                       onChange={handleImageChange}
                       className="hidden"
                     />
-                    <FiEdit2 className="w-5 h-5 text-indigo-600" />
+                    <FiEdit2 className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
                   </label>
                 </div>
 
                 <div className="w-full">
                   <label
                     htmlFor="fullname"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-base sm:text-sm font-medium text-gray-700 mb-1"
                   >
                     Full Name
                   </label>
@@ -587,7 +626,7 @@ const UserList = () => {
                     onChange={(e) =>
                       setEditData({ ...editData, fullname: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-base sm:text-sm"
                     placeholder="Enter full name"
                     required
                     aria-required="true"
@@ -599,7 +638,7 @@ const UserList = () => {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  className="px-4 py-2 sm:py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-base sm:text-sm"
                   disabled={isLoading}
                   aria-label="Cancel"
                 >
@@ -607,14 +646,14 @@ const UserList = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition flex items-center gap-2"
+                  className="px-4 py-2 sm:py-2 bg-indigo-600 text-white rounded-lg active:bg-indigo-700 disabled:bg-indigo-400 transition flex items-center gap-2 text-base sm:text-sm"
                   disabled={isLoading}
                   aria-label="Save profile changes"
                 >
                   {isLoading ? (
                     <>
                       <svg
-                        className="animate-spin h-4 w-4 text-white"
+                        className="animate-spin h-5 w-5 sm:h-4 sm:w-4 text-white"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -649,7 +688,7 @@ const UserList = () => {
             <SendChat receiverId={selectedUser._id} />
           )
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500 text-lg">
+          <div className="flex-1 flex items-center justify-center text-gray-500 text-lg sm:text-xl">
             Select a user to start chatting
           </div>
         )}

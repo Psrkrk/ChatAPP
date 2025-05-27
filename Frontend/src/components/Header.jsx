@@ -13,8 +13,7 @@ import { toast } from "react-toastify";
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "Services", href: "/services" },
-  { name: "Features", href: "/features" },
-  { name: "How It Works", href: "#how-it-works" },
+
 ];
 
 const getNameFromEmail = (email) => {
