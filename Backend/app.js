@@ -13,6 +13,7 @@ import messageRoute from "./src/routes/messageRoute.js";
 import profileRoute from "./src/routes/profileRoute.js";
 import userRoute from "./src/routes/userRoute.js";
 import notificationRoute from "./src/routes/notificationRoutes.js";
+import adminRoute from "./src/routes/adminRoute.js"
 
 // Load environment variables
 dotenv.config();
@@ -59,11 +60,13 @@ connectDB().catch(err => {
 });
 
 // API Routes
+
 app.use("/api/v1", authRoute);
 app.use("/api/v1", messageRoute);
 app.use("/api/v1", profileRoute);
 app.use("/api/v1", userRoute);
 app.use("/api/v1", notificationRoute);
+app.use("/api/v1", adminRoute);
 
 // Default route
 app.get("/", (req, res) => {

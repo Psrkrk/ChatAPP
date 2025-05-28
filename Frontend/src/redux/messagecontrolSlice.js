@@ -15,12 +15,24 @@ export const deleteMessage = createAsyncThunk(
   }
 );
 
+export const deleteMessages = createAsyncThunk(
+  'messageControl/deleteMessages',
+  async (messageIds, thunkAPI) => {
+    try {
+      const response = await messageControlService.deleteMessages(messageIds);
+      return { messageIds, data: response };
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 export const deleteConversation = createAsyncThunk(
   'messageControl/deleteConversation',
-  async (conversationId, thunkAPI) => {
+  async ({ userId, receiverId }, thunkAPI) => {
     try {
-      const response = await messageControlService.deleteConversation(conversationId);
-      return { conversationId, data: response };
+      const response = await messageControlService.deleteConversation({ userId, receiverId });
+      return { conversationId: `${userId}-${receiverId}`, data: response };
     } catch (error) {
       return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -34,14 +46,14 @@ const messageControlSlice = createSlice({
   initialState: {
     loading: false,
     error: null,
-    deletedMessageId: null,
+    deletedMessageIds: [],
     deletedConversationId: null,
   },
   reducers: {
     clearMessageControlState: (state) => {
       state.loading = false;
       state.error = null;
-      state.deletedMessageId = null;
+      state.deletedMessageIds = [];
       state.deletedConversationId = null;
     },
   },
@@ -54,9 +66,23 @@ const messageControlSlice = createSlice({
       })
       .addCase(deleteMessage.fulfilled, (state, action) => {
         state.loading = false;
-        state.deletedMessageId = action.payload.messageId;
+        state.deletedMessageIds = [action.payload.messageId];
       })
       .addCase(deleteMessage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete Messages (Batch)
+      .addCase(deleteMessages.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteMessages.fulfilled, (state, action) => {
+        state.loading = false;
+        state.deletedMessageIds = action.payload.messageIds;
+      })
+      .addCase(deleteMessages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

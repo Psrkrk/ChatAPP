@@ -1,9 +1,10 @@
-import User from "../models/userModel.js";
+// adminController.js
+import User from "../models/userModel";
 
 // ✅ Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password"); // Exclude password field
+    const users = await User.find().select("-password"); // Exclude password
     res.status(200).json({ success: true, users });
   } catch (error) {
     console.error("Error in getAllUsers:", error);
@@ -11,28 +12,22 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+// ❌ Delete user account
+export const deleteUserAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const deletedUser = await User.findByIdAndDelete(userId);
 
-
-   // Find and delete the user
-  export const deleteUserAccount = async (req, res) => {
-    try {
-      const userId = req.user.id; // Extract user ID from JWT token
-  
-     
-      const deletedUser = await User.findByIdAndDelete(userId);
-  
-      if (!deletedUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      res.status(200).json({ success: true, message: "User account deleted successfully" });
-    } catch (error) {
-      console.error("Error in deleteUserAccount:", error);
-      res.status(500).json({ error: "Internal server error" });
+    if (!deletedUser) {
+      return res.status(404).json({ error: "User not found" });
     }
-  };
 
-  
+    res.status(200).json({ success: true, message: "User account deleted successfully" });
+  } catch (error) {
+    console.error("Error in deleteUserAccount:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 // 🔒 Block a user
 export const blockUser = async (req, res) => {
@@ -58,7 +53,6 @@ export const blockUser = async (req, res) => {
   }
 };
 
-
 // ✅ Unblock a user
 export const unblockUser = async (req, res) => {
   try {
@@ -66,8 +60,6 @@ export const unblockUser = async (req, res) => {
     const targetId = req.params.userId;
 
     const user = await User.findById(userId);
-
-    // Filter out the user from blockedUsers
     user.blockedUsers = user.blockedUsers.filter(
       (id) => id.toString() !== targetId
     );

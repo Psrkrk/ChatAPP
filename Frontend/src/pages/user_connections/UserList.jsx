@@ -17,7 +17,7 @@ const UserList = () => {
   const location = useLocation();
 
   const { users, user: currentUser, isLoading, error } = useSelector(
-    (state) => state.user
+    (state) => state.user || {}
   );
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -33,7 +33,7 @@ const UserList = () => {
   const [toastNotifications, setToastNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false); // New state for sidebar toggle
+  const [showSidebar, setShowSidebar] = useState(false);
   const [socket, setSocket] = useState(null);
 
   // Initialize socket connection
@@ -45,17 +45,26 @@ const UserList = () => {
     });
     setSocket(newSocket);
 
-    newSocket.on("connect_error", (err) => {
-      console.error("Socket connection error:", err.message);
-      showToastNotification("Failed to connect to server. Retrying...");
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
+      if (currentUser?._id) {
+        newSocket.emit("register", currentUser._id);
+      }
     });
 
-    return () => newSocket.disconnect();
-  }, []);
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err.message);
+      showToastNotification("Failed to connect to server. Retrying...", "error");
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []); // Remove currentUser from dependencies to avoid reinitializing socket
 
   // Set up socket listeners and fetch notifications
   useEffect(() => {
-    if (!socket || !currentUser) return;
+    if (!socket || !currentUser?._id) return;
 
     socket.emit("register", currentUser._id);
 
@@ -76,20 +85,42 @@ const UserList = () => {
       addPersistentNotification(notification);
     });
 
-    // Fetch initial notifications (Assuming notificationService is defined)
-    // Replace with actual service implementation
-    // notificationService.getNotifications(currentUser._id)
-    //   .then((notifications) => {
-    //     setPersistentNotifications(notifications.map((n) => ({ ...n, timestamp: n.createdAt || Date.now() })));
-    //     setUnreadCount(notifications.filter((n) => !n.read).length);
-    //   })
-    //   .catch((err) => showToastNotification(err.message));
+    // Placeholder for fetching initial notifications
+    // Replace with actual notificationService implementation
+    /*
+    notificationService.getNotifications(currentUser._id)
+      .then((notifications) => {
+        setPersistentNotifications(
+          notifications.map((n) => ({
+            ...n,
+            timestamp: n.createdAt || Date.now(),
+          }))
+        );
+        setUnreadCount(notifications.filter((n) => !n.read).length);
+      })
+      .catch((err) => showToastNotification(err.message, "error"));
+    */
+
+    // Mock initial notifications (replace with actual service call)
+    const mockNotifications = [
+      {
+        _id: "1",
+        type: "message",
+        sender: "mockUser1",
+        text: "New message from Mock User",
+        read: false,
+        link: `/chats/mockUser1/received`,
+        timestamp: Date.now(),
+      },
+    ];
+    setPersistentNotifications(mockNotifications);
+    setUnreadCount(mockNotifications.filter((n) => !n.read).length);
 
     return () => {
       socket.off("newMessage");
       socket.off("notification");
     };
-  }, [socket, currentUser]);
+  }, [socket, currentUser?._id]);
 
   // Clean up object URLs
   useEffect(() => {
@@ -105,14 +136,14 @@ const UserList = () => {
     dispatch(getAllUsers());
   }, [dispatch]);
 
-  // Update selected user
+  // Update selected user and sync sidebar
   useEffect(() => {
     if (receiverId && currentUser) {
-      setSelectedUser(
-        receiverId === currentUser._id
-          ? currentUser
-          : users.find((u) => u._id === receiverId) || null
-      );
+      const user = receiverId === currentUser._id
+        ? currentUser
+        : users.find((u) => u._id === receiverId) || null;
+      setSelectedUser(user);
+      setShowSidebar(false); // Close sidebar on user selection (mobile)
     } else {
       setSelectedUser(null);
     }
@@ -129,15 +160,15 @@ const UserList = () => {
     }
   }, [currentUser]);
 
-  const addPersistentNotification = (notification) => {
+  const addPersistentNotification = useCallback((notification) => {
     setPersistentNotifications((prev) => [notification, ...prev]);
     if (!notification.read) {
       setUnreadCount((prev) => prev + 1);
-      showToastNotification(notification.text);
+      showToastNotification(notification.text, "info");
     }
-  };
+  }, []);
 
-  const showToastNotification = (message, type = "info") => {
+  const showToastNotification = useCallback((message, type = "info") => {
     const toastId = `toast-${Date.now()}`;
     setToastNotifications((prev) => [
       ...prev,
@@ -146,16 +177,18 @@ const UserList = () => {
 
     setTimeout(() => {
       setToastNotifications((prev) =>
-        prev.map((t) => (t.id === toastId ? { ...t, visible: false } : t))
+        prev.map((t) =>
+          t.id === toastId ? { ...t, visible: false } : t
+        )
       );
     }, 5000);
-  };
+  }, []);
 
   const handleUserClick = useCallback(
     (user) => {
       if (isLoading) return;
       setShowEdit(false);
-      setShowSidebar(false); // Close sidebar on mobile
+      setShowSidebar(false);
       navigate(`/chats/${user._id}/send`);
       showToastNotification(`Now chatting with ${user.fullname}`, "success");
     },
@@ -239,8 +272,6 @@ const UserList = () => {
   const markAsRead = useCallback(
     async (id) => {
       try {
-        // Assuming notificationService.markAsRead is defined
-        // await notificationService.markAsRead(id);
         setPersistentNotifications((prev) =>
           prev.map((n) => (n._id === id ? { ...n, read: true } : n))
         );
@@ -254,11 +285,6 @@ const UserList = () => {
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const unreadIds = persistentNotifications
-        .filter((n) => !n.read)
-        .map((n) => n._id);
-      // Assuming notificationService.markAsRead is defined
-      // await Promise.all(unreadIds.map((id) => notificationService.markAsRead(id)));
       setPersistentNotifications((prev) =>
         prev.map((n) => ({ ...n, read: true }))
       );
@@ -267,7 +293,7 @@ const UserList = () => {
     } catch (err) {
       showToastNotification("Failed to mark all notifications as read", "error");
     }
-  }, [persistentNotifications]);
+  }, []);
 
   const chatMode = location.pathname.split("/").pop();
 
@@ -683,9 +709,9 @@ const UserList = () => {
           </div>
         ) : selectedUser ? (
           chatMode === "received" ? (
-            <ReceivedChat receiverId={selectedUser._id} />
+            <ReceivedChat receiverId={selectedUser._id} socket={socket} />
           ) : (
-            <SendChat receiverId={selectedUser._id} />
+            <SendChat receiverId={selectedUser._id} socket={socket} />
           )
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500 text-lg sm:text-xl">

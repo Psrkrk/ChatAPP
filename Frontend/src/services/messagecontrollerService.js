@@ -14,10 +14,25 @@ const messageControlService = {
     }
   },
 
-  // Delete a conversation by ID
-  deleteConversation: async (conversationId) => {
+  // Delete multiple messages by IDs
+  deleteMessages: async (messageIds) => {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/conversation/delete/${conversationId}`);
+      const response = await axios.delete(`${API_BASE_URL}/message/delete`, {
+        data: { messageIds },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting messages:', error);
+      throw error;
+    }
+  },
+
+  // Delete a conversation by userId and receiverId
+  deleteConversation: async ({ userId, receiverId }) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/conversation/delete`, {
+        data: { userId, receiverId },
+      });
       return response.data;
     } catch (error) {
       console.error('Error deleting conversation:', error);
