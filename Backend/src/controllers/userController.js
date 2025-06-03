@@ -1,5 +1,5 @@
-// adminController.js
-import User from "../models/userModel";
+
+import User from "../../src/models/userModel.js"; // ✅ include .js extension
 
 // ✅ Get all users
 export const getAllUsers = async (req, res) => {
