@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FaUserCircle,
   FaBars,
   FaTimes,
+  FaTrashAlt,
+  FaEllipsisV,
   FaSignOutAlt,
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllUsers } from "../redux/userSlice"; // ✅ Thunk to fetch all users
+import { getAllUsers, deleteUser } from "../redux/userSlice";
 import { toast } from "react-toastify";
 
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "Services", href: "/services" },
-
 ];
 
 const getNameFromEmail = (email) => {
@@ -24,14 +25,27 @@ const getNameFromEmail = (email) => {
 const Header = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isUserMenuOpen, setUserMenuOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const userMenuRef = useRef(null);
 
   const { users } = useSelector((state) => state.user);
   const token = localStorage.getItem("authToken");
-  const email = localStorage.getItem("email"); // 👈 store this during login/signup
+  const email = localStorage.getItem("email");
 
   const loggedInUser = users.find((u) => u.email === email);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (token && email) {
@@ -43,16 +57,40 @@ const Header = () => {
   const toggleMenu = () => setMobileMenuOpen(!isMobileMenuOpen);
   const closeMenu = () => setMobileMenuOpen(false);
 
+  const toggleUserMenu = () => setUserMenuOpen(!isUserMenuOpen);
+
+  const handleDeleteAccount = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete your account? This action cannot be undone."
+      )
+    ) {
+      try {
+        await dispatch(deleteUser()).unwrap();
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("email");
+        setIsLoggedIn(false);
+        setUserMenuOpen(false);
+        toast.success("Account deleted successfully");
+        navigate("/");
+      } catch (error) {
+        toast.error("Failed to delete account");
+      }
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("email");
     setIsLoggedIn(false);
+    setUserMenuOpen(false);
     toast.success("Logged out successfully");
-    navigate("/");
+    navigate("/login");
   };
 
   const handleConnectClick = () => {
     isLoggedIn ? navigate("/chats") : navigate("/login");
+    closeMenu();
   };
 
   return (
@@ -79,14 +117,17 @@ const Header = () => {
                   </a>
                 </li>
               ))}
-              <li onClick={handleConnectClick} className="cursor-pointer text-gray-700 hover:text-blue-600">
+              <li
+                onClick={handleConnectClick}
+                className="cursor-pointer text-gray-700 hover:text-blue-600"
+              >
                 Connect
               </li>
             </ul>
 
             {/* User Info */}
             {isLoggedIn && loggedInUser ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 relative" ref={userMenuRef}>
                 <div className="w-10 h-10 rounded-full bg-blue-100 overflow-hidden">
                   {loggedInUser.avatar ? (
                     <img
@@ -102,17 +143,43 @@ const Header = () => {
                   {loggedInUser.fullname || getNameFromEmail(loggedInUser.email)}
                 </span>
                 <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 text-gray-700 hover:text-blue-600"
+                  onClick={toggleUserMenu}
+                  className="text-gray-700 hover:text-blue-600"
+                  aria-label="User Menu"
                 >
-                  <FaSignOutAlt />
-                  Sign Out
+                  <FaEllipsisV />
                 </button>
+                {isUserMenuOpen && (
+                  <div className="absolute top-12 right-0 bg-white shadow-lg rounded-lg p-2 w-48 z-50">
+                    <ul className="flex flex-col gap-2">
+                      <li>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 text-gray-700 hover:text-gray-900 w-full text-left"
+                        >
+                          <FaSignOutAlt /> Logout
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          onClick={handleDeleteAccount}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-800 w-full text-left"
+                        >
+                          <FaTrashAlt /> Delete Account
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <Link to="/signup" className="text-blue-600">Sign Up</Link>
-                <Link to="/login" className="text-blue-600">Log In</Link>
+                <Link to="/signup" className="text-blue-600">
+                  Sign Up
+                </Link>
+                <Link to="/login" className="text-blue-600">
+                  Log In
+                </Link>
               </div>
             )}
           </div>
@@ -144,16 +211,49 @@ const Header = () => {
               <div className="border-t border-gray-200 pt-3">
                 {isLoggedIn ? (
                   <>
-                    <li>
-                      <Link to="/profile" onClick={closeMenu} className="text-gray-700">
-                        My Profile
-                      </Link>
-                    </li>
-                    <li>
-                      <button onClick={handleLogout} className="text-gray-700 w-full text-left">
-                        <FaSignOutAlt /> Sign Out
+                    <li className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 overflow-hidden">
+                        {loggedInUser.avatar ? (
+                          <img
+                            src={loggedInUser.avatar}
+                            alt={loggedInUser.fullname}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <FaUserCircle className="text-blue-600 text-xl mx-auto mt-1" />
+                        )}
+                      </div>
+                      <span className="font-medium text-gray-700">
+                        {loggedInUser.fullname || getNameFromEmail(loggedInUser.email)}
+                      </span>
+                      <button
+                        onClick={toggleUserMenu}
+                        className="ml-auto text-gray-700 hover:text-blue-600"
+                        aria-label="User Menu"
+                      >
+                        <FaEllipsisV />
                       </button>
                     </li>
+                    {isUserMenuOpen && (
+                      <ul className="flex flex-col gap-2 pl-4">
+                        <li>
+                          <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 w-full text-left"
+                          >
+                            <FaSignOutAlt /> Logout
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            onClick={handleDeleteAccount}
+                            className="flex items-center gap-2 text-red-600 w-full text-left"
+                          >
+                            <FaTrashAlt /> Delete Account
+                          </button>
+                        </li>
+                      </ul>
+                    )}
                   </>
                 ) : (
                   <>

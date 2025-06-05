@@ -75,7 +75,7 @@ export const login = async (req, res) => {
     // 1. Find user by email
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "email not match with the database" });
+      return res.status(400).json({ message: "email does not exist" });
     }
 
     // 2. Compare passwords

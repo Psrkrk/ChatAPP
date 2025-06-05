@@ -35,6 +35,19 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+// ✅ Delete user thunk
+export const deleteUser = createAsyncThunk(
+  "user/deleteUser",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await userService.deleteUser();
+      return response; // Return response for state updates
+    } catch (error) {
+      return rejectWithValue(error.message || "Failed to delete user");
+    }
+  }
+);
+
 // ✅ Logout thunk
 export const logoutUser = createAsyncThunk(
   "user/logoutUser",
@@ -107,6 +120,23 @@ const userSlice = createSlice({
         // Toast handled by userService
       })
       .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+        // Toast handled by userService
+      })
+
+      // 🔹 deleteUser
+      .addCase(deleteUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.users = [];
+        // Toast handled by userService
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
         // Toast handled by userService

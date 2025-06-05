@@ -51,7 +51,7 @@ const userService = {
       const formData = new FormData();
       formData.append("fullname", fullname);
       if (profileImage) {
-        formData.append("profileImage", profileImage); // Use profileImage from parameters
+        formData.append("profileImage", profileImage);
       }
 
       const response = await fetch(`${API_BASE_URL}/user/update-profile`, {
@@ -76,6 +76,38 @@ const userService = {
     } catch (error) {
       toast.error(error.message || "Failed to update profile");
       console.error("updateProfile error:", error);
+      throw error;
+    }
+  },
+
+  // Delete user (DELETE /user/delete)
+  deleteUser: async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("Authentication token missing");
+
+      const response = await fetch(`${API_BASE_URL}/user/delete`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) await handleAPIError(response);
+
+      const result = await response.json();
+
+      console.log("deleteUser result:", result);
+
+      if (result.message?.toLowerCase().includes("deleted")) {
+        toast.success(result.message || "User deleted successfully");
+      }
+
+      return result;
+    } catch (error) {
+      toast.error(error.message || "Failed to delete user");
+      console.error("deleteUser error:", error);
       throw error;
     }
   },
