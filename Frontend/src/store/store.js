@@ -4,7 +4,7 @@ import userReducer from "../redux/userSlice.js";
 import chatReducer from "../redux/chatSlice.js"; // Ensure this file exists if uncommented
 import notificationReducer from "../redux/notificationSlice.js";
 import messageControlReducer from "../redux/messagecontrolSlice.js"; // Ensure this file exists if uncommented
-
+import adminReducer from "../redux/adminSlice.js"; // Ensure this file exists if uncommented
 const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -12,6 +12,7 @@ const store = configureStore({
     chat: chatReducer, // Uncomment if chatSlice exists and is needed
     messageControl: messageControlReducer, // Ensure this is the correct reducer for your message controller
     notifications: notificationReducer, // Correct key
+    admin: adminReducer, // Ensure this is the correct reducer for your admin functionality
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
